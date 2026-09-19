@@ -48,20 +48,26 @@ const recentTickets = computed(() =>
         <h2 class="text-xl sm:text-2xl font-bold mb-1">سلام {{ user?.full_name?.split(' ')[0] || user?.first_name || '' }}، خوش برگشتی 👋</h2>
         <p class="text-gray-400 text-sm">خلاصه‌ای از وضعیت سرویس‌ها و حساب کاربری‌ات</p>
       </div>
-      <NuxtLink
-        to="/start"
-        class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 shrink-0"
-      >
-        <Plus class="w-5 h-5" />
-        خرید سرویس جدید
-      </NuxtLink>
+<!--      <NuxtLink-->
+<!--        to="/start"-->
+<!--        class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 shrink-0"-->
+<!--      >-->
+<!--        <Plus class="w-5 h-5" />-->
+<!--        خرید سرویس جدید-->
+<!--      </NuxtLink>-->
     </div>
 
     <!-- Stats -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
       <DashboardStatCard :icon="Server" label="سرویس فعال" :value="stats.activeServices" color="from-purple-500 to-blue-600" />
       <DashboardStatCard :icon="Clock3" label="در حال انقضا" :value="stats.expiringServices" color="from-yellow-500 to-orange-500" />
-      <DashboardStatCard :icon="Receipt" label="فاکتور در انتظار" :value="stats.pendingInvoices" color="from-pink-500 to-purple-600" />
+      <NuxtLink
+        to="/dashboard/purchaserecords"
+        class="block rounded-2xl transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400"
+        aria-label="مشاهده فاکتورهای در انتظار پرداخت"
+      >
+        <DashboardStatCard :icon="Receipt" label="فاکتور در انتظار" :value="stats.pendingInvoices" color="from-pink-500 to-purple-600" />
+      </NuxtLink>
       <DashboardStatCard :icon="MessageSquare" label="تیکت باز" :value="stats.openTickets" color="from-blue-500 to-purple-600" />
     </div>
 

@@ -14,4 +14,4 @@ import 'vue-sonner/style.css'
     rich-colors
     :toast-options="{ style: { fontFamily: 'inherit' } }"
   />
-</template> 
+</template>

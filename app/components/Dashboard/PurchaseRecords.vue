@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { X, Eye, Loader2, Printer } from 'lucide-vue-next'
+import { X, Eye, Loader2 } from 'lucide-vue-next'
 
 const props = defineProps({
   additional: {
@@ -148,7 +148,14 @@ const returnReasons = ref([])
 const loadingList = ref(false)
 const loadingInvoice = ref(false)
 
-const getPurchasesList = (status) => {
+const statusByTab = {
+  stores: [2, 3, 4, 5, 8],
+  invoices: [6],
+  returned_invoices: [9, 10, 11, 12],
+  canceled_invoices: [7]
+}
+
+const getPurchasesList = (status = statusByTab[tab.value] || statusByTab.stores) => {
   Invoices.value = []
   loadingList.value = true
   apiFetch('/invoices/indexByUser', { conditions: { status } })
@@ -293,7 +300,7 @@ function openDialogReturnedGoods() {
     max_return_amount: item.amount - item.return_amount,
     id: item.id,
     return_reason: '',
-    description: '',
+    return_description: '',
     price_kind: item.price_kind,
     invoice_id: Invoice.value.id
   }))
@@ -310,7 +317,7 @@ async function submitReturnItems() {
   if (!returnData.value || !Array.isArray(returnData.value)) return
   if (!Invoice.value || !Invoice.value.id) return
 
-  const returnItem = returnData.value.filter((item) => item.return > 0)
+  const returnItem = returnData.value.filter((item) => Number(item.return) > 0)
 
   for (const item of returnItem) {
     if (!item.return_reason || !item.return_description) {
@@ -398,15 +405,7 @@ function updateStatus(id, status) {
 }
 
 watch(tab, (newTab) => {
-  if (newTab === 'stores') {
-    getPurchasesList([2, 3, 4, 5, 8])
-  } else if (newTab === 'invoices') {
-    getPurchasesList([6])
-  } else if (newTab === 'returned_invoices') {
-    getPurchasesList([9, 10, 11, 12])
-  } else if (newTab === 'canceled_invoices') {
-    getPurchasesList([7])
-  }
+  getPurchasesList(statusByTab[newTab] || statusByTab.stores)
 })
 
 const isAllReturned = computed(() => {
@@ -845,20 +844,12 @@ const activeTabConfig = computed(() => tabsConfig.find((c) => c.value === tab.va
             </button>
             
             <DashboardPrintInvoice
-                v-if="Invoice.status === 11 || Invoice.status === 6"
-                :data="Invoice"
-                rounded="lg"
-                color="blue"
-                kind="invoice"
-            />
-            <button
               v-if="Invoice.status === 11 || Invoice.status === 6"
-              type="button"
-              class="flex items-center gap-1.5 rounded-lg border border-blue-500/30 px-4 py-2 text-sm font-medium text-blue-300 hover:bg-blue-500/10"
-            >
-              <Printer class="w-4 h-4" />
-              چاپ فاکتور
-            </button>
+              :data="Invoice"
+              rounded="lg"
+              color="blue"
+              kind="invoice"
+            />
             <button type="button" class="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-gray-300 hover:bg-white/10" @click="dialog = false">
               {{ t('close') }}
             </button>

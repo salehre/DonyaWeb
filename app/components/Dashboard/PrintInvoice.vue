@@ -4,11 +4,11 @@ import {ref} from "vue";
 // const {t} = useI18n()
 const t = (key: string) => key
 const props = defineProps({
-  data: {type: Array, required: false, default: null},
+  data: {type: Object, required: false, default: () => ({})},
   kind: {type: String, required: false, default: 'pre_invoice'},
   rounded: {type: String, required: false, default: 'lg'},
   color: {type: String, required: false, default: 'blue'},
-//   custom: {type: Array, required: false, default: null},
+  custom: {type: Object, required: false, default: () => ({})},
 });
 
 const dateString = ref("jYYYY/jMM/jDD")

@@ -153,6 +153,20 @@ function scrollToTop() {
 
         <div class="flex items-center gap-3">
           <a
+            href="https://trustseal.enamad.ir/?id=7777753&Code=71lEVcK3EUE3zE3SOe3URKEnmS8SXekF"
+            referrerpolicy="origin"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="نماد اعتماد الکترونیکی"
+          >
+            <img
+              src="https://trustseal.enamad.ir/logo.aspx?id=7777753&Code=71lEVcK3EUE3zE3SOe3URKEnmS8SXekF"
+              alt="نماد اعتماد الکترونیکی"
+              class="h-14 w-auto cursor-pointer"
+            >
+          </a>
+
+          <a
             v-for="s in socialLinks"
             :key="s.label"
             :href="s.href"
