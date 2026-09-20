@@ -1,12 +1,14 @@
 <script setup>
 import { ref } from 'vue'
-import { Wallet, CreditCard, Landmark, Plus, ArrowDownLeft, ArrowUpRight } from 'lucide-vue-next'
+import { Wallet, CreditCard, Landmark, Plus, ArrowDownLeft, ArrowUpRight, ArrowRight } from 'lucide-vue-next'
 
 definePageMeta({ layout: 'dashboard' })
 
 useHead({
   title: 'افزایش موجودی کیف پول | دنیاوب'
 })
+
+const router = useRouter()
 
 const { toJalaliDate } = useJalaliDate()
 
@@ -36,6 +38,10 @@ const isSubmitting = ref(false)
 function selectQuick(a) {
   amount.value = a
   customAmount.value = ''
+}
+
+function goBack() {
+  router.back()
 }
 
 async function handleTopup() {
@@ -70,6 +76,14 @@ async function handleTopup() {
           <p class="text-2xl font-bold">{{ formatNumber(balance) }} <span class="text-sm font-normal text-gray-400">تومان</span></p>
         </div>
       </div>
+      <button
+          type="button"
+          class="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors w-fit"
+          @click="goBack"
+        >
+        بازگشت
+         <ArrowRight class="w-4 h-4 rotate-180" />
+       </button>
     </div>
 
     <div class="glass-card rounded-3xl p-6 sm:p-8 space-y-6">

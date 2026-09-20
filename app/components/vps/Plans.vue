@@ -51,12 +51,14 @@
           سفارش {{ plans.find(p => p.id === selectedPlan)?.name }}
         </NuxtLink>
 
-        <NuxtLink
-          to="/checkout-vps?plan=vps1"
-          class="inline-flex px-8 py-4 rounded-xl glass border border-white/10 hover:border-purple-500/40 transition-all font-bold text-lg"
-        >
-          سفارشی
-        </NuxtLink>
+        <div class="p-px rounded-xl bg-linear-to-r from-blue-600 to-purple-600">
+          <NuxtLink
+            to="/checkout-vps?custom=1"
+            class="inline-flex px-8 py-4 rounded-[11px] bg-slate-800 hover:bg-black/80 transition-all font-bold text-lg"
+          >
+            سفارشی
+          </NuxtLink>
+        </div>
       </div>
     </section>
 </template>
@@ -67,9 +69,9 @@ import { Cpu, HardDrive, Wifi, Layers, Check } from 'lucide-vue-next'
 const selectedPlan = ref('vps2')
 
 const plans = [
-  { id: 'vps1', name: 'Orbit', cpu: '۱ هسته', ram: '۲ GB', disk: '۴۰ GB NVMe', bandwidth: '۱ TB', price: "تماس بگیرید" },
-  { id: 'vps2', name: 'Nova', cpu: '۲ هسته', ram: '۴ GB', disk: '۸۰ GB NVMe', bandwidth: '۲ TB', price: "تماس بگیرید", badge: 'محبوب' },
-  { id: 'vps3', name: 'Nebula', cpu: '۴ هسته', ram: '۸ GB', disk: '۱۶۰ GB NVMe', bandwidth: '۴ TB', price: "تماس بگیرید" },
-  { id: 'vps4', name: 'Galaxy', cpu: '۶ هسته', ram: '۱۶ GB', disk: '۳۲۰ GB NVMe', bandwidth: '۸ TB', price: "تماس بگیرید" }
+  { id: 'vps1', name: 'Orbit', cpu: '۱ هسته', ram: '۲ GB', disk: '۴۰ GB NVMe', bandwidth: '۱ TB', price: "۵۵۰,۰۰۰" },
+  { id: 'vps2', name: 'Nova', cpu: '۲ هسته', ram: '۴ GB', disk: '۸۰ GB NVMe', bandwidth: '۲ TB', price: "۱,۱۰۰,۰۰۰", badge: 'محبوب' },
+  { id: 'vps3', name: 'Nebula', cpu: '۴ هسته', ram: '۸ GB', disk: '۱۶۰ GB NVMe', bandwidth: '۴ TB', price: "۲,۲۰۰,۰۰۰" },
+  { id: 'vps4', name: 'Galaxy', cpu: '۶ هسته', ram: '۱۶ GB', disk: '۳۲۰ GB NVMe', bandwidth: '۸ TB', price: "۴,۱۰۰,۰۰۰" }
 ]
 </script>

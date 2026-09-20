@@ -17,15 +17,34 @@ const { addItem: addToCartItem } = useCart()
 
 // --- VPS plans ---
 const plans = {
-  vps1: { name: 'Orbit', cpu: '۱ هسته', ram: '۲ GB', disk: '۴۰ GB NVMe', bandwidth: '۱ TB', monthlyPrice: 290000 },
-  vps2: { name: 'Nova', cpu: '۲ هسته', ram: '۴ GB', disk: '۸۰ GB NVMe', bandwidth: '۲ TB', monthlyPrice: 490000 },
-  vps3: { name: 'Nebula', cpu: '۴ هسته', ram: '۸ GB', disk: '۱۶۰ GB NVMe', bandwidth: '۴ TB', monthlyPrice: 890000 },
-  vps4: { name: 'Galaxy', cpu: '۶ هسته', ram: '۱۶ GB', disk: '۳۲۰ GB NVMe', bandwidth: '۸ TB', monthlyPrice: 1490000 }
+  vps1: { name: 'Orbit', cpu: 1, ram: 2, storage: 40, traffic: 1, monthlyPrice: 290000 },
+  vps2: { name: 'Nova', cpu: 2, ram: 4, storage: 80, traffic: 2, monthlyPrice: 490000 },
+  vps3: { name: 'Nebula', cpu: 4, ram: 8, storage: 160, traffic: 4, monthlyPrice: 890000 },
+  vps4: { name: 'Galaxy', cpu: 6, ram: 16, storage: 320, traffic: 8, monthlyPrice: 1490000 }
 }
 
+const isCustom = route.query.custom === '1'
 const initialPlan = route.query.plan && plans[route.query.plan] ? route.query.plan : 'vps2'
 const planId = ref(initialPlan)
-const selectedPlan = computed(() => plans[planId.value])
+const selectedPlan = computed(() => isCustom ? { ...plans.vps1, name: 'سفارشی' } : plans[planId.value])
+
+const limits = {
+  cpu: { min: 1, max: 64, step: 1 },
+  ram: { min: 2, max: 128, step: 2 },
+  storage: { min: 20, max: 2048, step: 10 },
+  traffic: { min: 1, max: 10, step: 1 }
+}
+
+const configuration = ref({
+  cpu: isCustom ? limits.cpu.min : selectedPlan.value.cpu,
+  ram: isCustom ? limits.ram.min : selectedPlan.value.ram,
+  storage: isCustom ? limits.storage.min : selectedPlan.value.storage,
+  traffic: isCustom ? limits.traffic.min : selectedPlan.value.traffic
+})
+
+function formatStorage(value) {
+  return value >= 1024 ? `${value / 1024} TB` : `${value} GB`
+}
 
 // --- Operating system ---
 const osOptions = [
@@ -130,6 +149,10 @@ function buildProductItem() {
     cycleLabel: activeCycle.value.label,
     summary: [
       { label: 'پلن', value: selectedPlan.value.name },
+      { label: 'vCPU', value: `${configuration.value.cpu} Core` },
+      { label: 'RAM', value: `${configuration.value.ram} GB` },
+      { label: 'Storage', value: formatStorage(configuration.value.storage) },
+      { label: 'ترافیک', value: `${configuration.value.traffic} TB` },
       { label: 'سیستم‌عامل', value: activeOs.value.label },
       ...(selectedAddons.value.length
         ? [{ label: 'خدمات تکمیلی', value: addons.filter((a) => selectedAddons.value.includes(a.id)).map((a) => a.label).join('، ') }]
@@ -223,29 +246,48 @@ async function submitOrder() {
         <div class="grid lg:grid-cols-3 gap-8 items-start">
           <!-- Form -->
           <div class="lg:col-span-2 space-y-6">
-            <!-- Selected plan -->
+            <!-- VPS configuration -->
             <div class="glass-card rounded-2xl p-6">
               <div class="flex items-center justify-between gap-3 mb-4">
-                <h2 class="font-bold">پلن انتخاب‌شده</h2>
+                <h2 class="font-bold">{{ isCustom ? 'پیکربندی سفارشی' : 'مشخصات پلن' }}</h2>
                 <span class="text-blue-300 font-bold">{{ selectedPlan.name }}</span>
               </div>
 
-              <div class="grid sm:grid-cols-2 gap-3 text-sm">
-                <div class="flex items-center gap-2 rounded-xl border border-white/10 p-3 text-gray-300">
-                  <Cpu class="w-4 h-4 text-blue-400 shrink-0" />
-                  <span>{{ selectedPlan.cpu }}</span>
+              <div class="grid sm:grid-cols-2 gap-4">
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div class="flex items-center justify-between gap-2 mb-3 text-sm">
+                    <span class="text-gray-300">vCPU</span>
+                    <span class="rounded-lg bg-blue-500 px-2.5 py-1 text-xs font-bold text-white">{{ configuration.cpu }} Core</span>
+                  </div>
+                  <input v-model.number="configuration.cpu" type="range" :min="limits.cpu.min" :max="limits.cpu.max" :step="limits.cpu.step" class="w-full accent-blue-500">
+                  <div class="mt-2 flex justify-between text-xs text-gray-500"><span>۱ Core</span><span>۶۴ Core</span></div>
                 </div>
-                <div class="flex items-center gap-2 rounded-xl border border-white/10 p-3 text-gray-300">
-                  <Layers class="w-4 h-4 text-blue-400 shrink-0" />
-                  <span>{{ selectedPlan.ram }} رم</span>
+
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div class="flex items-center justify-between gap-2 mb-3 text-sm">
+                    <span class="text-gray-300">RAM</span>
+                    <span class="rounded-lg bg-blue-500 px-2.5 py-1 text-xs font-bold text-white">{{ configuration.ram }} GB</span>
+                  </div>
+                  <input v-model.number="configuration.ram" type="range" :min="limits.ram.min" :max="limits.ram.max" :step="limits.ram.step" class="w-full accent-blue-500">
+                  <div class="mt-2 flex justify-between text-xs text-gray-500"><span>۲ GB</span><span>۱۲۸ GB</span></div>
                 </div>
-                <div class="flex items-center gap-2 rounded-xl border border-white/10 p-3 text-gray-300">
-                  <HardDrive class="w-4 h-4 text-blue-400 shrink-0" />
-                  <span>{{ selectedPlan.disk }}</span>
+
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div class="flex items-center justify-between gap-2 mb-3 text-sm">
+                    <span class="text-gray-300">Storage</span>
+                    <span class="rounded-lg bg-blue-500 px-2.5 py-1 text-xs font-bold text-white">{{ formatStorage(configuration.storage) }}</span>
+                  </div>
+                  <input v-model.number="configuration.storage" type="range" :min="limits.storage.min" :max="limits.storage.max" :step="limits.storage.step" class="w-full accent-blue-500">
+                  <div class="mt-2 flex justify-between text-xs text-gray-500"><span>۲۰ GB</span><span>۲ TB</span></div>
                 </div>
-                <div class="flex items-center gap-2 rounded-xl border border-white/10 p-3 text-gray-300">
-                  <Wifi class="w-4 h-4 text-blue-400 shrink-0" />
-                  <span>{{ selectedPlan.bandwidth }} ترافیک</span>
+
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div class="flex items-center justify-between gap-2 mb-3 text-sm">
+                    <span class="text-gray-300">ترافیک</span>
+                    <span class="rounded-lg bg-blue-500 px-2.5 py-1 text-xs font-bold text-white">{{ configuration.traffic }} TB</span>
+                  </div>
+                  <input v-model.number="configuration.traffic" type="range" :min="limits.traffic.min" :max="limits.traffic.max" :step="limits.traffic.step" class="w-full accent-blue-500">
+                  <div class="mt-2 flex justify-between text-xs text-gray-500"><span>۱ TB</span><span>۱۰ TB</span></div>
                 </div>
               </div>
             </div>
@@ -365,10 +407,10 @@ async function submitOrder() {
             <p class="text-gray-400 text-sm mb-4">{{ activeOs.label }}</p>
 
             <ul class="space-y-2 mb-4 text-gray-300 text-sm">
-              <li class="flex items-center gap-2"><Cpu class="w-4 h-4 text-blue-400 shrink-0" /> {{ selectedPlan.cpu }}</li>
-              <li class="flex items-center gap-2"><Layers class="w-4 h-4 text-blue-400 shrink-0" /> {{ selectedPlan.ram }} رم</li>
-              <li class="flex items-center gap-2"><HardDrive class="w-4 h-4 text-blue-400 shrink-0" /> {{ selectedPlan.disk }}</li>
-              <li class="flex items-center gap-2"><Wifi class="w-4 h-4 text-blue-400 shrink-0" /> {{ selectedPlan.bandwidth }} ترافیک</li>
+              <li class="flex items-center gap-2"><Cpu class="w-4 h-4 text-blue-400 shrink-0" /> {{ configuration.cpu }} Core</li>
+              <li class="flex items-center gap-2"><Layers class="w-4 h-4 text-blue-400 shrink-0" /> {{ configuration.ram }} GB RAM</li>
+              <li class="flex items-center gap-2"><HardDrive class="w-4 h-4 text-blue-400 shrink-0" /> {{ formatStorage(configuration.storage) }}</li>
+              <li class="flex items-center gap-2"><Wifi class="w-4 h-4 text-blue-400 shrink-0" /> {{ configuration.traffic }} TB ترافیک</li>
             </ul>
 
             <ul v-if="selectedAddons.length" class="space-y-2 mb-4 text-blue-200 text-sm border-t border-white/10 pt-4">
