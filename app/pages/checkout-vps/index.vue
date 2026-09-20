@@ -419,34 +419,6 @@ async function submitOrder() {
               </li>
             </ul>
 
-            <!-- Coupon -->
-            <div class="border-t border-white/10 pt-4 mb-4">
-              <div v-if="!couponApplied" class="flex gap-2">
-                <div class="relative flex-1">
-                  <Tag class="w-4 h-4 text-gray-400 absolute top-1/2 -translate-y-1/2 right-3" />
-                  <input
-                    v-model="couponInput"
-                    type="text"
-                    placeholder="کد تخفیف"
-                    class="w-full pr-9 pl-3 py-2.5 rounded-lg input-glass text-white placeholder-gray-500 outline-none text-sm"
-                    @keyup.enter="applyCoupon"
-                  >
-                </div>
-                <button
-                  type="button"
-                  class="px-4 rounded-lg border border-white/20 hover:bg-white/10 transition-all text-sm shrink-0"
-                  @click="applyCoupon"
-                >
-                  اعمال
-                </button>
-              </div>
-              <div v-else class="flex items-center justify-between px-3 py-2.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-300 text-sm">
-                <span class="flex items-center gap-1.5"><Check class="w-4 h-4" /> کد {{ couponInput || VALID_COUPON }} اعمال شد</span>
-                <button type="button" @click="removeCoupon"><X class="w-4 h-4" /></button>
-              </div>
-              <p v-if="couponError" class="text-red-400 text-xs mt-2">{{ couponError }}</p>
-            </div>
-
             <!-- Price breakdown -->
             <div class="border-t border-white/10 pt-4 space-y-2 text-sm">
               <div class="flex items-center justify-between text-gray-400">
@@ -457,10 +429,6 @@ async function submitOrder() {
                 <span>تخفیف دوره {{ activeCycle.label }}</span>
                 <span>−{{ formatPrice(cycleDiscountAmount) }} تومان</span>
               </div> -->
-              <div v-if="couponDiscountAmount > 0" class="flex items-center justify-between text-green-400">
-                <span>تخفیف کد تخفیف</span>
-                <span>−{{ formatPrice(couponDiscountAmount) }} تومان</span>
-              </div>
             </div>
 
             <div class="border-t border-white/10 mt-4 pt-4 mb-6">
@@ -470,7 +438,7 @@ async function submitOrder() {
               </div>
             </div>
 
-            <button
+            <!-- <button
               type="button"
               :disabled="isSubmitting"
               class="w-full py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -478,13 +446,12 @@ async function submitOrder() {
             >
               <Loader2 v-if="isSubmitting" class="w-4 h-4 animate-spin" />
               تماس بگیرید
-              <!-- {{ isSubmitting ? 'در حال پردازش...' : 'پرداخت و راه‌اندازی سرور' }} -->
-            </button>
+            </button> -->
 
             <button
               type="button"
               :disabled="isAddingToCart"
-              class="w-full mt-3 py-3 rounded-xl glass border border-white/10 hover:border-purple-500/40 transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              class="w-full py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               @click="addToCart"
             >
               <Loader2 v-if="isAddingToCart" class="w-4 h-4 animate-spin" />

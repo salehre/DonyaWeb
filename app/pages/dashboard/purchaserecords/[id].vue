@@ -16,7 +16,6 @@ const Transactions = ref([])
 const loading = ref(true)
 const notFound = ref(false)
 
-const dialogAcc = ref(false)
 const dialogReturnedGoods = ref(false)
 const dialogChangeStatus = ref(false)
 const btnLoadingPayment = ref(false)
@@ -228,6 +227,8 @@ function updateStatus(id, status) {
 const isAwaitingPayment = computed(() => Invoice.value.status_text === 'awaiting_payment')
 const hasShippable = computed(() => (Invoice.value.invoice_details || []).some((d) => d.products?.type_code === 1))
 
+const showTransactions = computed(() => [3, 4, 5, 6].includes(Invoice.value.status) && Transactions.value.length > 0)
+
 const isAllReturned = computed(() => {
   if (!returnData.value.length) return true
   return returnData.value.every((item) => item.max_return_amount === 0)
@@ -259,14 +260,6 @@ const isAllReturned = computed(() => {
           @click="openDialogReturnedGoods()"
         >
           ثبت مرجوعی
-        </button>
-        <button
-          v-if="[3, 4, 5, 6].includes(Invoice.status)"
-          type="button"
-          class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-300 hover:bg-amber-500/20"
-          @click="dialogAcc = true"
-        >
-          تراکنش‌ها
         </button>
 
         <DashboardPrintInvoice
@@ -427,6 +420,47 @@ const isAllReturned = computed(() => {
       </div>
     </div>
 
+    <!-- لیست تراکنش‌ها -->
+    <div v-if="!loading && !notFound && showTransactions" class="glass-card rounded-3xl p-5 sm:p-8">
+      <h3 class="mb-4 text-base font-bold text-purple-300">لیست تراکنش‌ها</h3>
+      <div class="overflow-x-auto rounded-xl border border-white/10">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-white/10 text-gray-400 text-right">
+              <th class="px-4 py-3 font-medium">شناسه تراکنش</th>
+              <th class="px-4 py-3 font-medium">نوع تراکنش</th>
+              <th class="px-4 py-3 font-medium">تاریخ سررسید</th>
+              <th class="px-4 py-3 font-medium">مبلغ</th>
+              <th class="px-4 py-3 font-medium">وضعیت</th>
+              <th class="px-4 py-3 font-medium text-center">پرداخت</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in Transactions" :key="item.id" class="border-b border-white/5 last:border-0">
+              <td class="px-4 py-3 text-gray-300">{{ item.wallet_transactions_id }}</td>
+              <td class="px-4 py-3 text-gray-300">{{ t(item.kind_text) }}</td>
+              <td class="px-4 py-3 text-gray-400">{{ formatJalali(item.document_date) }}</td>
+              <td class="px-4 py-3 text-gray-200">{{ numberWithSeparator(parseInt(item.amount)) }} {{ item.currency_name }}</td>
+              <td class="px-4 py-3">
+                <span class="rounded-full px-2.5 py-0.5 text-xs font-medium border" :class="getStatusBadgeClass(item.status)">{{ t(item.status_text) }}</span>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <button
+                  v-if="item.kind === 8 && (item.status === 1 || item.status === 3)"
+                  type="button"
+                  :disabled="btnLoadingPayment"
+                  class="rounded-lg bg-indigo-500/10 border border-indigo-500/30 px-3 py-1.5 text-xs font-semibold text-indigo-300 disabled:opacity-60"
+                  @click="goPayment(item.wallet_transactions_id)"
+                >
+                  پرداخت
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- پرداخت فاکتور در انتظار پرداخت -->
     <template v-if="!loading && !notFound && isAwaitingPayment">
       <DashboardInvoicePayment v-if="!hasShippable" :invoice="Invoice" />
@@ -434,56 +468,6 @@ const isAllReturned = computed(() => {
         این فاکتور شامل کالای فیزیکی است و برای پرداخت به انتخاب آدرس و زمان ارسال نیاز دارد.
       </div>
     </template>
-
-    <!-- ================= DIALOG: transactions list for an installment (dialogAcc) ================= -->
-    <Transition name="garnet-fade">
-      <div v-if="dialogAcc" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div class="flex max-h-[90dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl glass-strong border border-white/10 shadow-2xl">
-          <div class="flex items-center justify-between px-6 pt-4">
-            <h3 class="text-base font-bold text-purple-300">لیست تراکنش‌ها</h3>
-            <button type="button" class="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-gray-300 hover:bg-white/10" @click="dialogAcc = false">
-              {{ t('close') }}
-            </button>
-          </div>
-          <div class="overflow-auto p-6">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-white/10 text-gray-400 text-right">
-                  <th class="px-4 py-3 font-medium">شناسه تراکنش</th>
-                  <th class="px-4 py-3 font-medium">نوع تراکنش</th>
-                  <th class="px-4 py-3 font-medium">تاریخ سررسید</th>
-                  <th class="px-4 py-3 font-medium">مبلغ</th>
-                  <th class="px-4 py-3 font-medium">وضعیت</th>
-                  <th class="px-4 py-3 font-medium text-center">پرداخت</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="item in Transactions" :key="item.id" class="border-b border-white/5 last:border-0">
-                  <td class="px-4 py-3 text-gray-300">{{ item.wallet_transactions_id }}</td>
-                  <td class="px-4 py-3 text-gray-300">{{ t(item.kind_text) }}</td>
-                  <td class="px-4 py-3 text-gray-400">{{ formatJalali(item.document_date) }}</td>
-                  <td class="px-4 py-3 text-gray-200">{{ numberWithSeparator(parseInt(item.amount)) }} {{ item.currency_name }}</td>
-                  <td class="px-4 py-3">
-                    <span class="rounded-full px-2.5 py-0.5 text-xs font-medium border" :class="getStatusBadgeClass(item.status)">{{ t(item.status_text) }}</span>
-                  </td>
-                  <td class="px-4 py-3 text-center">
-                    <button
-                      v-if="item.kind === 8 && (item.status === 1 || item.status === 3)"
-                      type="button"
-                      :disabled="btnLoadingPayment"
-                      class="rounded-lg bg-indigo-500/10 border border-indigo-500/30 px-3 py-1.5 text-xs font-semibold text-indigo-300 disabled:opacity-60"
-                      @click="goPayment(item.wallet_transactions_id)"
-                    >
-                      پرداخت
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </Transition>
 
     <!-- ================= DIALOG: returned goods (dialogReturnedGoods) ================= -->
     <Transition name="garnet-slide-up">

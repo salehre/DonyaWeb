@@ -64,7 +64,7 @@ function scrollToTop() {
     <div class="border-b border-white/10">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div v-for="b in trustBadges" :key="b.label" class="flex items-center justify-center sm:justify-start gap-2.5">
+          <div v-for="b in trustBadges" :key="b.label" class="flex items-center justify-center gap-2.5">
             <div class="w-9 h-9 rounded-xl bg-linear-to-br from-purple-500/20 to-blue-600/20 border border-white/10 flex items-center justify-center shrink-0">
               <component :is="b.icon" class="w-4.5 h-4.5 text-purple-300" />
             </div>

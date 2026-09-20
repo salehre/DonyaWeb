@@ -209,7 +209,7 @@ function isValidSheba(sheba) {
           <div>
             <p class="text-gray-400 text-sm mb-1">موجودی قابل استفاده</p>
             <div class="flex items-center gap-2">
-              <p class="text-3xl sm:text-4xl font-black">{{ formatNumber(balance) }}</p>
+              <p class="text-3xl sm:text-4xl font-black">{{ balance.toLocaleString('fa-IR') }}</p>
               <span class="text-base font-normal text-gray-400">تومان</span>
               <button type="button" class="text-gray-500 hover:text-white transition-colors" @click="copyBalance">
                 <Copy class="w-4 h-4" />
