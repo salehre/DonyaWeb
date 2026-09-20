@@ -19,21 +19,21 @@ const { addItem: addToCartItem } = useCart()
 const plans = {
   basic: {
     name: 'هاست پایه',
-    monthlyPrice: 'تماس بگیرید',
+    monthlyPrice: '290000',
     desc: 'مناسب برای سایت‌های شخصی',
-    features: ['۱۰ GB فضای NVMe', 'پهنای باند نامحدود', '۱۰ دیتابیس', 'SSL رایگان']
+    features: ['۱۰ GB فضای NVMe', 'پهنای باند نامحدود', '۲ دیتابیس', 'SSL رایگان', '۲ ایمیل اختصاصی']
   },
   pro: {
     name: 'هاست حرفه‌ای',
-    monthlyPrice: 'تماس بگیرید',
+    monthlyPrice: '590000',
     desc: 'مناسب برای فروشگاه‌های آنلاین',
-    features: ['۵۰ GB فضای NVMe', 'پهنای باند نامحدود', 'دیتابیس نامحدود', 'بک‌آپ روزانه', 'پشتیبانی اولویت‌دار']
+    features: ['۵۰ GB فضای NVMe', 'پهنای باند نامحدود', '۵ دیتابیس', 'بک‌آپ روزانه', 'پشتیبانی اولویت‌دار', '۱۰ ایمیل اختصاصی']
   },
   business: {
     name: 'هاست سازمانی',
-    monthlyPrice: 'تماس بگیرید',
+    monthlyPrice: '1390000',
     desc: 'مناسب برای سازمان‌های بزرگ',
-    features: ['۲۰۰ GB فضای NVMe', 'منابع اختصاصی', 'LiteSpeed Enterprise', 'پشتیبانی تلفنی']
+    features: ['۲۰۰ GB فضای NVMe', 'منابع اختصاصی', '۱۰ دیتابیس', 'LiteSpeed Enterprise', 'پشتیبانی تلفنی', '۵۰ ایمیل اختصاصی']
   }
 }
 
@@ -44,7 +44,7 @@ const selectedPlan = computed(() => plans[planId.value])
 // --- Billing cycle ---
 const cycles = [
   { id: 'monthly', label: 'ماهانه', months: 1, discount: 0 },
-  { id: 'yearly', label: 'سالانه', months: 12, discount: 0.2, badge: '۲۰٪ تخفیف' }
+  { id: 'yearly', label: 'سالانه', months: 12, discount: 0.1, badge: '۱۰٪ تخفیف' }
 ]
 const selectedCycle = ref('yearly')
 const activeCycle = computed(() => cycles.find((c) => c.id === selectedCycle.value))
@@ -53,7 +53,7 @@ const activeCycle = computed(() => cycles.find((c) => c.id === selectedCycle.val
 const addons = [
   { id: 'ssl', label: 'گواهی SSL Premium (EV)', desc: 'اعتبارسنجی سازمانی و نمایش نام برند در نوار آدرس مرورگر', monthlyPrice: 15000 },
   { id: 'backup', label: 'بک‌آپ لحظه‌ای هر ۶ ساعت', desc: 'به‌جای بک‌آپ روزانه، هر ۶ ساعت یک نسخه پشتیبان تهیه می‌شود', monthlyPrice: 20000 },
-  { id: 'migration', label: 'انتقال رایگان سایت', desc: 'انتقال کامل سایت از هاست فعلی توسط تیم فنی، بدون قطعی', monthlyPrice: 0, free: true }
+  { id: 'migration', label: 'انتقال سایت', desc: 'انتقال کامل سایت از هاست فعلی توسط تیم فنی، بدون قطعی', monthlyPrice: 0, free: true }
 ]
 const selectedAddons = ref(['migration'])
 function toggleAddon(id) {
@@ -110,8 +110,8 @@ const acceptTerms = ref(false)
 
 // --- Pricing ---
 function formatPrice(n) {
-  return 'تماس بگیرید'
-  // return Math.round(n).toLocaleString('fa-IR')
+  // return 'تماس بگیرید'
+  return Math.round(n).toLocaleString('fa-IR')
 }
 
 const addonsMonthly = computed(() =>
@@ -293,6 +293,7 @@ async function submitOrder() {
             </div>
 
             <!-- Add-ons -->
+          <fieldset disabled class="glass-card rounded-2xl p-6 opacity-50">
             <div class="glass-card rounded-2xl p-6">
               <h2 class="font-bold mb-4 flex items-center gap-2">
                 <Sparkles class="w-5 h-5 text-purple-400" /> خدمات تکمیلی
@@ -301,7 +302,7 @@ async function submitOrder() {
                 <label
                   v-for="a in addons"
                   :key="a.id"
-                  class="flex items-start gap-3 rounded-xl border-2 p-4 cursor-pointer transition-all"
+                  class="flex items-start gap-3 rounded-xl border-2 p-4 cursor-not-allowed transition-all"
                   :class="selectedAddons.includes(a.id) ? 'border-purple-500 bg-purple-500/10' : 'border-white/10 hover:border-purple-500/40'"
                 >
                   <input
@@ -322,6 +323,7 @@ async function submitOrder() {
                 </label>
               </div>
             </div>
+          </fieldset>
 
             <!-- Domain -->
             <div class="glass-card rounded-2xl p-6">
@@ -358,10 +360,9 @@ async function submitOrder() {
             </div>
 
             <!-- Customer info -->
-            <div class="glass-card rounded-2xl p-6">
+            <!-- <div class="glass-card rounded-2xl p-6">
               <h2 class="font-bold mb-4">اطلاعات مشتری</h2>
 
-              <!-- Billing type -->
               <div class="flex gap-3 mb-5">
                 <button
                   type="button"
@@ -452,10 +453,10 @@ async function submitOrder() {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> -->
 
             <!-- Payment method -->
-            <div class="glass-card rounded-2xl p-6">
+            <!-- <div class="glass-card rounded-2xl p-6">
               <h2 class="font-bold mb-4">روش پرداخت</h2>
               <div class="grid sm:grid-cols-2 gap-4">
                 <button
@@ -470,7 +471,7 @@ async function submitOrder() {
                   <span class="font-medium">{{ m.label }}</span>
                 </button>
               </div>
-            </div>
+            </div> -->
 
             <!-- Terms -->
             <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">

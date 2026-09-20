@@ -1,90 +1,26 @@
 <template>
-    <section class="px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto pb-20">
-      <div class="grid lg:grid-cols-2 gap-10">
-        <!-- Ticket Form -->
-        <div class="glass-card rounded-3xl p-8">
-          <div class="flex items-center gap-3 mb-6">
-            <div class="w-11 h-11 rounded-xl bg-blue-500/20 flex items-center justify-center">
-              <LifeBuoy class="w-6 h-6 text-blue-400" />
+    <section class="px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto pb-16">
+      <div class="grid lg:grid-cols-2 gap-6">
+        <!-- Ticket Action -->
+        <div class="glass-card rounded-3xl p-8 text-center hover-lift flex flex-col justify-between">
+          <div class="align-center">
+            <div class="w-14 h-14 rounded-2xl bg-linear-to-br from-purple-500 to-blue-600 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-purple-500/30">
+              <LifeBuoy class="w-7 h-7 text-white" />
             </div>
-            <h2 class="text-xl font-bold">ثبت تیکت پشتیبانی</h2>
+
+            <h2 class="text-xl font-bold mb-2">ثبت تیکت پشتیبانی</h2>
+            <p class="text-gray-400 text-sm leading-relaxed mb-5">
+              برای ثبت درخواست جدید یا پیگیری تیکت‌های قبلی، وارد پنل کاربری خود شوید.
+            </p>
           </div>
 
-          <div v-if="submitted" class="flex flex-col items-center text-center py-10">
-            <CheckCircle2 class="w-14 h-14 text-green-400 mb-4" />
-            <h3 class="text-lg font-bold mb-2">تیکت شما ثبت شد</h3>
-            <p class="text-gray-400 text-sm mb-6">تیم پشتیبانی به‌زودی از طریق ایمیل با شما تماس می‌گیرد.</p>
-            <button
-              type="button"
-              class="px-6 py-2 rounded-xl border border-white/20 hover:bg-white/10 transition-all text-sm"
-              @click="submitted = false"
-            >
-              ثبت تیکت جدید
-            </button>
-          </div>
-
-          <form v-else class="space-y-5" @submit.prevent="submitTicket">
-            <div class="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label for="name" class="block text-sm text-gray-300 mb-2">نام و نام خانوادگی</label>
-                <div class="relative">
-                  <User class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-                  <input
-                    id="name"
-                    v-model="name"
-                    type="text"
-                    placeholder="نام شما"
-                    class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none"
-                  >
-                </div>
-              </div>
-
-              <div>
-                <label for="ticket-email" class="block text-sm text-gray-300 mb-2">ایمیل</label>
-                <div class="relative">
-                  <AtSign class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-                  <input
-                    id="ticket-email"
-                    v-model="email"
-                    type="email"
-                    placeholder="example@email.com"
-                    class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none"
-                  >
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label for="subject" class="block text-sm text-gray-300 mb-2">موضوع</label>
-              <input
-                id="subject"
-                v-model="subject"
-                type="text"
-                placeholder="موضوع درخواست خود را بنویسید"
-                class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none"
-              >
-            </div>
-
-            <div>
-              <label for="message" class="block text-sm text-gray-300 mb-2">توضیحات</label>
-              <textarea
-                id="message"
-                v-model="message"
-                rows="5"
-                placeholder="مشکل یا درخواست خود را با جزئیات شرح دهید..."
-                class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none resize-none"
-              />
-            </div>
-
-            <button
-              type="submit"
-              :disabled="isSubmitting"
-              class="w-full py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <Send class="w-4 h-4" />
-              {{ isSubmitting ? 'در حال ارسال...' : 'ارسال تیکت' }}
-            </button>
-          </form>
+          <NuxtLink
+            to="/dashboard/tickets"
+            class="w-full py-3 rounded-xl border border-purple-500/50 text-purple-300 hover:bg-purple-500/20 transition-all font-medium text-sm inline-flex items-center justify-center gap-2"
+          >
+            <Send class="w-4 h-4" />
+            ورود به تیکت‌ها
+          </NuxtLink>
         </div>
 
         <!-- FAQ -->
@@ -125,8 +61,7 @@
 
 <script setup>
 import {
-  Phone, Mail, MessageCircle, LifeBuoy, Clock, ChevronDown,
-  Send, User, AtSign, CheckCircle2
+  LifeBuoy, ChevronDown, Send
 } from 'lucide-vue-next'
 
 // --- FAQ ---
@@ -149,7 +84,7 @@ const faqs = [
   },
   {
     q: 'چطور یک تیکت پشتیبانی جدید ثبت کنم؟',
-    a: 'می‌توانید از فرم زیر همین صفحه یک تیکت جدید ارسال کنید یا از داخل پنل کاربری، بخش «تیکت‌ها» را باز کنید.'
+    a: 'می‌توانید از داخل پنل کاربری، بخش «تیکت‌ها» را باز کنید و درخواست جدید خود را ثبت یا تیکت‌های قبلی را پیگیری کنید.'
   }
 ]
 
@@ -158,35 +93,4 @@ function toggleFaq(i) {
   openFaq.value = openFaq.value === i ? null : i
 }
 
-// --- Ticket form ---
-const name = ref('')
-const email = ref('')
-const subject = ref('')
-const message = ref('')
-const isSubmitting = ref(false)
-const submitted = ref(false)
-const toast = useToast()
-
-async function submitTicket() {
-  if (!name.value || !email.value || !subject.value || !message.value) {
-    toast.error('لطفاً همه فیلدها را تکمیل کنید')
-    return
-  }
-
-  isSubmitting.value = true
-  try {
-    // TODO: اتصال به API واقعی ثبت تیکت
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    submitted.value = true
-    toast.success('تیکت شما با موفقیت ثبت شد.')
-    name.value = ''
-    email.value = ''
-    subject.value = ''
-    message.value = ''
-  } catch (err) {
-    toast.error('ارسال تیکت با خطا مواجه شد، دوباره تلاش کنید')
-  } finally {
-    isSubmitting.value = false
-  }
-}
 </script>

@@ -310,7 +310,7 @@ async function handleCheckout() {
           </div>
 
           <!-- روش پرداخت -->
-          <div class="glass-card rounded-2xl p-6">
+          <!-- <div class="glass-card rounded-2xl p-6">
             <h2 class="font-bold mb-4">روش پرداخت</h2>
             <div class="grid sm:grid-cols-2 gap-4">
               <button
@@ -325,7 +325,7 @@ async function handleCheckout() {
                 <span class="font-medium">{{ m.label }}</span>
               </button>
             </div>
-          </div>
+          </div> -->
 
           <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">
             <input
@@ -392,13 +392,13 @@ async function handleCheckout() {
 
             <button
               type="button"
-              :disabled="isSubmitting"
-              class="w-full py-3.5 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled
+              class="w-full py-3.5 cursor-default! rounded-xl opacity-50 bg-linear-to-r from-purple-600 to-blue-600 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               @click="handleCheckout"
             >
               <Loader2 v-if="isSubmitting" class="w-5 h-5 animate-spin" />
               <ShieldCheck v-else class="w-5 h-5" />
-              تماس بگیرید
+              پرداخت
               <!-- {{ isSubmitting ? 'در حال ثبت سفارش...' : 'پرداخت و تکمیل خرید' }} -->
             </button>
 

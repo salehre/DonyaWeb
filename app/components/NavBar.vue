@@ -25,7 +25,7 @@ watch(() => route.fullPath, () => {
 const navLinks = [
   { to: '/cloudhosting', label: 'هاست ابری' },
   { to: '/vps', label: 'VPS' },
-  { to: '/dedicatedserver', label: 'سرور اختصاصی' },
+  // { to: '/dedicatedserver', label: 'سرور اختصاصی' },
   { to: '/domain', label: 'دامنه' },
   { to: '/support', label: 'پشتیبانی' },
   { to: '/about-us', label: 'درباره ما' },

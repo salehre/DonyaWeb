@@ -19,7 +19,7 @@ useHead({
     <AboutValues />
 
     <!-- Team -->
-    <AboutTeam />
+    <!-- <AboutTeam /> -->
 
     <!-- CTA -->
     <AboutCta />

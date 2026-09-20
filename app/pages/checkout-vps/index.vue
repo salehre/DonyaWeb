@@ -17,10 +17,10 @@ const { addItem: addToCartItem } = useCart()
 
 // --- VPS plans ---
 const plans = {
-  vps1: { name: 'VPS 1', cpu: '۱ هسته', ram: '۲ GB', disk: '۴۰ GB NVMe', bandwidth: '۱ TB', monthlyPrice: 290000 },
-  vps2: { name: 'VPS 2', cpu: '۲ هسته', ram: '۴ GB', disk: '۸۰ GB NVMe', bandwidth: '۲ TB', monthlyPrice: 490000 },
-  vps3: { name: 'VPS 3', cpu: '۴ هسته', ram: '۸ GB', disk: '۱۶۰ GB NVMe', bandwidth: '۴ TB', monthlyPrice: 890000 },
-  vps4: { name: 'VPS 4', cpu: '۶ هسته', ram: '۱۶ GB', disk: '۳۲۰ GB NVMe', bandwidth: '۸ TB', monthlyPrice: 1490000 }
+  vps1: { name: 'Orbit', cpu: '۱ هسته', ram: '۲ GB', disk: '۴۰ GB NVMe', bandwidth: '۱ TB', monthlyPrice: 290000 },
+  vps2: { name: 'Nova', cpu: '۲ هسته', ram: '۴ GB', disk: '۸۰ GB NVMe', bandwidth: '۲ TB', monthlyPrice: 490000 },
+  vps3: { name: 'Nebula', cpu: '۴ هسته', ram: '۸ GB', disk: '۱۶۰ GB NVMe', bandwidth: '۴ TB', monthlyPrice: 890000 },
+  vps4: { name: 'Galaxy', cpu: '۶ هسته', ram: '۱۶ GB', disk: '۳۲۰ GB NVMe', bandwidth: '۸ TB', monthlyPrice: 1490000 }
 }
 
 const initialPlan = route.query.plan && plans[route.query.plan] ? route.query.plan : 'vps2'
@@ -48,9 +48,8 @@ const activeCycle = computed(() => cycles.find((c) => c.id === selectedCycle.val
 
 // --- Add-ons ---
 const addons = [
-  { id: 'managed', label: 'پشتیبانی مدیریت‌شده (Managed)', desc: 'پیکربندی، مانیتورینگ و رفع مشکلات سرور توسط تیم فنی دنیاوب', monthlyPrice: 250000 },
-  { id: 'backup', label: 'بک‌آپ افزایشی روزانه', desc: 'تهیه نسخه پشتیبان روزانه با نگهداری ۱۴ روزه', monthlyPrice: 60000 },
-  { id: 'extraip', label: 'یک IP اختصاصی اضافه', desc: 'مناسب برای میزبانی چند سایت با SSL مجزا روی یک سرور', monthlyPrice: 40000 }
+  { id: 'managed', label: 'پشتیبانی مدیریت‌شده (Managed)', desc: 'پیکربندی، مانیتورینگ و رفع مشکلات سرور توسط تیم فنی دنیاوب', monthlyPrice: 390000 },
+  { id: 'backup', label: 'بک‌آپ افزایشی روزانه', desc: 'تهیه نسخه پشتیبان روزانه با نگهداری ۱۴ روزه', monthlyPrice: 290000 },
 ]
 const selectedAddons = ref([])
 function toggleAddon(id) {
@@ -100,8 +99,8 @@ const acceptTerms = ref(false)
 
 // --- Pricing ---
 function formatPrice(n) {
-  return "تماس بگیرید"
-  // return Math.round(n).toLocaleString('fa-IR')
+  // return "تماس بگیرید"
+  return Math.round(n).toLocaleString('fa-IR')
 }
 
 const addonsMonthly = computed(() =>
@@ -224,32 +223,30 @@ async function submitOrder() {
         <div class="grid lg:grid-cols-3 gap-8 items-start">
           <!-- Form -->
           <div class="lg:col-span-2 space-y-6">
-            <!-- Plan switcher -->
+            <!-- Selected plan -->
             <div class="glass-card rounded-2xl p-6">
-              <h2 class="font-bold mb-4">پلن VPS</h2>
-              <div class="grid sm:grid-cols-2 gap-3">
-                <button
-                  v-for="(p, id) in plans"
-                  :key="id"
-                  type="button"
-                  class="text-right rounded-xl border-2 p-4 transition-all"
-                  :class="planId === id ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 hover:border-blue-500/40'"
-                  @click="planId = id"
-                >
-                  <div class="flex items-center justify-between mb-2">
-                    <span class="font-medium text-sm">{{ p.name }}</span>
-                    <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0" :class="planId === id ? 'border-blue-500 bg-blue-500' : 'border-white/30'">
-                      <Check v-if="planId === id" class="w-2.5 h-2.5 text-white" />
-                    </div>
-                  </div>
-                  <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-400 mb-2">
-                    <span class="flex items-center gap-1"><Cpu class="w-3 h-3" /> {{ p.cpu }}</span>
-                    <span class="flex items-center gap-1"><Layers class="w-3 h-3" /> {{ p.ram }}</span>
-                    <span class="flex items-center gap-1"><HardDrive class="w-3 h-3" /> {{ p.disk }}</span>
-                    <span class="flex items-center gap-1"><Wifi class="w-3 h-3" /> {{ p.bandwidth }}</span>
-                  </div>
-                  <span class="text-xs text-blue-300">{{ formatPrice(p.monthlyPrice) }} تومان/ماه</span>
-                </button>
+              <div class="flex items-center justify-between gap-3 mb-4">
+                <h2 class="font-bold">پلن انتخاب‌شده</h2>
+                <span class="text-blue-300 font-bold">{{ selectedPlan.name }}</span>
+              </div>
+
+              <div class="grid sm:grid-cols-2 gap-3 text-sm">
+                <div class="flex items-center gap-2 rounded-xl border border-white/10 p-3 text-gray-300">
+                  <Cpu class="w-4 h-4 text-blue-400 shrink-0" />
+                  <span>{{ selectedPlan.cpu }}</span>
+                </div>
+                <div class="flex items-center gap-2 rounded-xl border border-white/10 p-3 text-gray-300">
+                  <Layers class="w-4 h-4 text-blue-400 shrink-0" />
+                  <span>{{ selectedPlan.ram }} رم</span>
+                </div>
+                <div class="flex items-center gap-2 rounded-xl border border-white/10 p-3 text-gray-300">
+                  <HardDrive class="w-4 h-4 text-blue-400 shrink-0" />
+                  <span>{{ selectedPlan.disk }}</span>
+                </div>
+                <div class="flex items-center gap-2 rounded-xl border border-white/10 p-3 text-gray-300">
+                  <Wifi class="w-4 h-4 text-blue-400 shrink-0" />
+                  <span>{{ selectedPlan.bandwidth }} ترافیک</span>
+                </div>
               </div>
             </div>
 
@@ -273,7 +270,7 @@ async function submitOrder() {
             </div>
 
             <!-- Billing cycle -->
-            <div class="glass-card rounded-2xl p-6">
+            <!-- <div class="glass-card rounded-2xl p-6">
               <h2 class="font-bold mb-4">دوره پرداخت</h2>
               <div class="grid sm:grid-cols-3 gap-4">
                 <button
@@ -295,7 +292,7 @@ async function submitOrder() {
                   </div>
                 </button>
               </div>
-            </div>
+            </div> -->
 
             <!-- Add-ons -->
             <div class="glass-card rounded-2xl p-6">
@@ -322,106 +319,11 @@ async function submitOrder() {
                   </div>
                 </label>
               </div>
-            </div>
-
-            <!-- Customer info -->
-            <div class="glass-card rounded-2xl p-6">
-              <h2 class="font-bold mb-4">اطلاعات مشتری</h2>
-
-              <div class="flex gap-3 mb-5">
-                <button
-                  type="button"
-                  class="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
-                  :class="billingType === 'individual' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'border border-white/10 text-gray-400 hover:border-white/30'"
-                  @click="billingType = 'individual'"
-                >
-                  حقیقی
-                </button>
-                <button
-                  type="button"
-                  class="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
-                  :class="billingType === 'company' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'border border-white/10 text-gray-400 hover:border-white/30'"
-                  @click="billingType = 'company'"
-                >
-                  حقوقی (سازمانی)
-                </button>
               </div>
 
-              <div class="space-y-4">
-                <div>
-                  <label for="fullName" class="block text-sm text-gray-300 mb-2">نام و نام خانوادگی</label>
-                  <div class="relative">
-                    <User class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-                    <input
-                      id="fullName"
-                      v-model="fullName"
-                      type="text"
-                      placeholder="نام شما"
-                      class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none"
-                    >
-                  </div>
-                </div>
-
-                <div v-if="billingType === 'company'" class="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label for="companyName" class="block text-sm text-gray-300 mb-2">نام شرکت</label>
-                    <div class="relative">
-                      <Building2 class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-                      <input
-                        id="companyName"
-                        v-model="companyName"
-                        type="text"
-                        placeholder="نام شرکت"
-                        class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none"
-                      >
-                    </div>
-                  </div>
-                  <div>
-                    <label for="nationalId" class="block text-sm text-gray-300 mb-2">شناسه ملی</label>
-                    <input
-                      id="nationalId"
-                      v-model="nationalId"
-                      type="text"
-                      placeholder="۱۴ رقم"
-                      class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none"
-                    >
-                  </div>
-                </div>
-
-                <div class="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label for="checkout-email" class="block text-sm text-gray-300 mb-2">ایمیل</label>
-                    <div class="relative">
-                      <AtSign class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-                      <input
-                        id="checkout-email"
-                        v-model="email"
-                        type="email"
-                        placeholder="example@email.com"
-                        class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none"
-                      >
-                    </div>
-                  </div>
-                  <div>
-                    <label for="checkout-phone" class="block text-sm text-gray-300 mb-2">شماره موبایل</label>
-                    <div class="relative">
-                      <Phone class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-                      <input
-                        id="checkout-phone"
-                        v-model="phone"
-                        type="tel"
-                        dir="ltr"
-                        placeholder="۰۹۱۲۳۴۵۶۷۸۹"
-                        class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none text-right"
-                      >
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             <!-- Payment method -->
-            <div class="glass-card rounded-2xl p-6">
+            <!-- <div class="glass-card rounded-2xl p-6">
               <h2 class="font-bold mb-4">روش پرداخت</h2>
               <div class="grid sm:grid-cols-2 gap-4">
                 <button
@@ -436,7 +338,7 @@ async function submitOrder() {
                   <span class="font-medium">{{ m.label }}</span>
                 </button>
               </div>
-            </div>
+            </div> -->
 
             <!-- Terms -->
             <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">
@@ -458,7 +360,7 @@ async function submitOrder() {
 
             <div class="flex items-center justify-between mb-1">
               <span class="text-gray-300 font-medium">{{ selectedPlan.name }}</span>
-              <span class="text-sm text-gray-400">{{ activeCycle.label }}</span>
+              <!-- <span class="text-sm text-gray-400">{{ activeCycle.label }}</span> -->
             </div>
             <p class="text-gray-400 text-sm mb-4">{{ activeOs.label }}</p>
 
@@ -509,10 +411,10 @@ async function submitOrder() {
                 <span>جمع جزء</span>
                 <span>{{ formatPrice(subtotal) }} تومان</span>
               </div>
-              <div v-if="cycleDiscountAmount > 0" class="flex items-center justify-between text-green-400">
+              <!-- <div v-if="cycleDiscountAmount > 0" class="flex items-center justify-between text-green-400">
                 <span>تخفیف دوره {{ activeCycle.label }}</span>
                 <span>−{{ formatPrice(cycleDiscountAmount) }} تومان</span>
-              </div>
+              </div> -->
               <div v-if="couponDiscountAmount > 0" class="flex items-center justify-between text-green-400">
                 <span>تخفیف کد تخفیف</span>
                 <span>−{{ formatPrice(couponDiscountAmount) }} تومان</span>
