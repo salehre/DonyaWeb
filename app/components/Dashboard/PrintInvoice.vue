@@ -548,17 +548,6 @@ ${value.products.title_fa}
   )}
     </b></td>
   </tr>
-  ${Number(props?.data?.send_price) > 0 ? `
-    <tr>
-      <td colspan="5"></td>
-      <td colspan="4" class="font-small">
-        <b>هزینه ارسال (ریال)</b>
-      </td>
-      <td><span class="ltr" id="otherPriceValue">
-        <b>${numberWithSeparatorToman(Number(props.data.send_price))}</b>
-      </span></td>
-    </tr>
-  ` : ''}
   ${Number(props?.data?.other_price) > 0 ? `
     <tr>
       <td colspan="5"></td>

@@ -226,7 +226,7 @@ function isValidSheba(sheba) {
             <Plus class="w-4 h-4" />
             افزایش موجودی
           </NuxtLink>
-          <button
+          <!-- <button
             type="button"
             class="inline-flex items-center gap-2 px-6 py-3 rounded-xl glass border border-white/10 transition-all font-bold"
             :class="hasSavedIban ? 'hover:border-purple-500/40' : 'opacity-50 cursor-not-allowed'"
@@ -242,7 +242,7 @@ function isValidSheba(sheba) {
           >
             <Gift class="w-4 h-4" />
             کارت هدیه
-          </NuxtLink>
+          </NuxtLink> -->
         </div>
       </div>
 
@@ -507,7 +507,7 @@ function isValidSheba(sheba) {
         </div>
 
         <!-- اطلاعات حساب -->
-        <div class="glass-card rounded-3xl overflow-hidden">
+        <!-- <div class="glass-card rounded-3xl overflow-hidden">
           <div class="p-5 border-b border-white/10 flex items-center justify-between">
             <h3 class="font-bold">اطلاعات حساب</h3>
             
@@ -534,7 +534,7 @@ function isValidSheba(sheba) {
               <span class="font-medium">{{ toJalaliDate(user.register_date) }}</span>
             </div>
           </div>
-        </div>
+        </div> -->
       </div>
     </div>
   </div>

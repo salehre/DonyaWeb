@@ -5,13 +5,13 @@ import { Eye, Loader2 } from 'lucide-vue-next'
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const { user } = useUserInfo()
 const {
   t,
   apiFetch,
   numberWithSeparator,
   getStatusBadgeClass,
   getStatusText,
-  getTypeText,
   getInvoicePrimaryDate,
   getInvoiceCode
 } = usePurchaseRecords()
@@ -62,6 +62,11 @@ const invoiceLink = (item) => ({
 })
 
 onMounted(() => {
+  // کاربری که status اش ۳ هست به سوابق خرید دسترسی نداره
+  if (user.value?.status === 3) {
+    navigateTo('/dashboard')
+    return
+  }
   getPurchasesList()
 })
 
@@ -168,26 +173,22 @@ const activeTabConfig = computed(() => tabsConfig.find((c) => c.value === tab.va
               <span class="rounded-full px-2.5 py-0.5 text-xs font-medium border" :class="getStatusBadgeClass(c.status)">{{ getStatusText(c) }}</span>
             </div>
             <div class="mb-2 flex items-center justify-between">
-              <span class="text-xs text-gray-500">نوع پرداخت</span>
-              <span class="text-sm text-gray-200">{{ getTypeText(c) }}</span>
-            </div>
-            <div class="mb-2 flex items-center justify-between">
               <span class="text-xs text-gray-500">{{ c.status_text?.includes('return') ? 'تاریخ درخواست مرجوعی' : t('date') }}</span>
               <span class="text-sm text-gray-200">{{ getInvoicePrimaryDate(c) }}</span>
             </div>
             <div v-if="!isReturnedTab" class="mb-2 flex items-center justify-between">
               <span class="text-xs text-gray-500">{{ t('presenter') }}</span>
-              <span class="text-sm text-gray-200">{{ c.presenter_full_name || c.user_full_name || '---' }}</span>
+              <span class="text-sm text-gray-200">{{ c.presenter_full_name ?? '---' }}</span>
             </div>
             <div v-if="!isReturnedTab" class="mb-2 flex items-center justify-between">
               <span class="text-xs text-gray-500">{{ t('discount') }}</span>
               <span class="text-sm text-gray-200">
-                {{ (c.discount_price + c.other_price) !== 0 ? numberWithSeparator(c.discount_price + c.other_price) + ' ' + (c.currency_name || 'تومان') : '---' }}
+                {{ (c.discount_price + c.other_price) !== 0 ? numberWithSeparator(c.discount_price + c.other_price) + ' ' + c.currency_name : '---' }}
               </span>
             </div>
             <div class="mb-3 flex items-center justify-between">
               <span class="text-xs text-gray-500">{{ c.status_text?.includes('return') ? 'مبلغ کل قابل استرداد' : t('total_price') }}</span>
-              <span class="text-sm font-semibold text-white">{{ numberWithSeparator(c.total_price) }} {{ c.currency_name || 'تومان' }}</span>
+              <span class="text-sm font-semibold text-white">{{ numberWithSeparator(c.total_price) }} {{ c.currency_name }}</span>
             </div>
             <NuxtLink
               :to="invoiceLink(c)"
@@ -215,7 +216,6 @@ const activeTabConfig = computed(() => tabsConfig.find((c) => c.value === tab.va
                 <th class="whitespace-nowrap px-4 py-3 font-medium">{{ isReturnedTab ? 'شماره فاکتور مرجوعی' : 'شماره فاکتور' }}</th>
                 <th v-if="isReturnedTab" class="whitespace-nowrap px-4 py-3 font-medium">شماره فاکتور مرجع</th>
                 <th class="px-4 py-3 font-medium">{{ t('status') }}</th>
-                <th class="px-4 py-3 font-medium">نوع پرداخت</th>
                 <th class="px-4 py-3 font-medium">{{ isReturnedTab ? 'تاریخ درخواست مرجوعی' : t('date') }}</th>
                 <th v-if="!isReturnedTab" class="px-4 py-3 font-medium">{{ t('presenter') }}</th>
                 <th v-if="!isReturnedTab" class="px-4 py-3 font-medium">{{ t('discount') }}</th>
@@ -231,11 +231,10 @@ const activeTabConfig = computed(() => tabsConfig.find((c) => c.value === tab.va
                 <td class="whitespace-nowrap px-4 py-3">
                   <span class="rounded-full px-2.5 py-0.5 text-xs font-medium border" :class="getStatusBadgeClass(item.status)">{{ getStatusText(item) }}</span>
                 </td>
-                <td class="px-4 py-3 text-gray-300">{{ getTypeText(item) }}</td>
                 <td class="px-4 py-3 text-gray-400">{{ getInvoicePrimaryDate(item) }}</td>
-                <td v-if="!isReturnedTab" class="whitespace-nowrap px-4 py-3 text-gray-300">{{ item.presenter_full_name || item.user_full_name || '----' }}</td>
+                <td v-if="!isReturnedTab" class="whitespace-nowrap px-4 py-3 text-gray-300">{{ item.presenter_full_name ?? '----' }}</td>
                 <td v-if="!isReturnedTab" class="px-4 py-3 text-gray-300">{{ numberWithSeparator(item.discount_price + item.other_price) }}</td>
-                <td class="px-4 py-3 text-gray-200 font-medium">{{ numberWithSeparator(item.total_price) }} {{ item.currency_name || 'تومان' }}</td>
+                <td class="px-4 py-3 text-gray-200 font-medium">{{ numberWithSeparator(item.total_price) }} {{ item.currency_name }}</td>
                 <td class="px-4 py-3">
                   <NuxtLink :to="invoiceLink(item)" class="inline-flex items-center gap-1.5 text-purple-300 hover:text-purple-200 transition-colors">
                     <Eye class="w-4 h-4" />

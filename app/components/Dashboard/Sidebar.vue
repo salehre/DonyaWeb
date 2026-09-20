@@ -59,12 +59,11 @@ const navItems = [
     children: [
       { type: 'link', label: 'کیف پول', to: '/dashboard/finance/wallet', icon: Wallet },
       { type: 'link', label: 'فهرست خرید', to: '/dashboard/invoices', icon: FileText },
-      { type: 'link', label: 'افزایش موجودی', to: '/dashboard/finance/topup', icon: CreditCard },
-      { type: 'link', label: 'کارت هدیه', to: '/dashboard/finance/gift-card', icon: Gift }
+      { type: 'link', label: 'فاکتورها', to: '/dashboard/purchaserecords', icon: FileTextIcon }
+      // { type: 'link', label: 'کارت هدیه', to: '/dashboard/finance/gift-card', icon: Gift },
     ]
   },
   { type: 'link', label: 'پشتیبانی', to: '/dashboard/tickets', icon: LifeBuoy, prefix: true },
-  { type: 'link', label: 'فاکتورها', to: '/dashboard/purchaserecords', icon: FileTextIcon, prefix: true },
   // { type: 'link', label: 'همکاری در فروش', to: '/dashboard/affiliate', icon: Users },
   // { type: 'link', label: 'انتقال مالکیت سرویس', to: '/dashboard/transfer-ownership', icon: Repeat }
 ]

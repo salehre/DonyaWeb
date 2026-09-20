@@ -2,10 +2,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { ArrowRight, X, Loader2 } from 'lucide-vue-next'
 
-definePageMeta({ layout: 'false' })
+definePageMeta({ layout: 'dashboard' })
 
 const route = useRoute()
 const toast = useToast()
+const { user } = useUserInfo()
+const { options: siteOptions, ensureLoaded: loadSiteOptions } = useSiteOptions()
 const { t, apiFetch, numberWithSeparator, formatJalali, getStatusBadgeClass } = usePurchaseRecords()
 
 const language = ref('fa')
@@ -63,17 +65,23 @@ const loadInvoice = () => {
 
 function loadReturnItems() {
   apiFetch('/dynamicKinds/showByType', { type: 'Return' }).then((response) => {
-    returnReasons.value = response.DynamicKinds
+    returnReasons.value = response.DynamicKinds || []
   })
 }
 
 onMounted(() => {
+  // کاربری که status اش ۳ هست به سوابق خرید دسترسی نداره
+  if (user.value?.status === 3) {
+    navigateTo('/dashboard')
+    return
+  }
   loadReturnItems()
   loadInvoice()
+  loadSiteOptions()
 })
 
-const goPayment = (item) => {
-  if (item.presenter_id) {
+const goPayment = (transactionsId) => {
+  if (user.value?.presenter_id) {
     toast.warning('جهت پرداخت قسط، لطفاً با نماینده خود هماهنگ فرمایید.')
     return
   }
@@ -82,7 +90,7 @@ const goPayment = (item) => {
   apiFetch('/wallets/paymentInstallment', {
     selectedPaymentProcedure: 170,
     selectedGateway: 1,
-    transactions_id: item.wallet_transactions_id
+    transactions_id: transactionsId
   })
     .then((response) => {
       const gatewayTitle = response.GatewayTitle
@@ -107,13 +115,13 @@ const goPayment = (item) => {
 }
 
 function openDialogReturnedGoods() {
-  returnData.value = Invoice.value.invoice_details.map((item) => ({
-    product_id: item.products.id,
+  returnData.value = (Invoice.value.invoice_details || []).map((item) => ({
+    product_id: item.products?.id,
     product: item.products,
     amount: item.amount,
     return: 0,
-    return_amount: item.return_amount,
-    max_return_amount: item.amount - item.return_amount,
+    return_amount: item.return_amount || 0,
+    max_return_amount: item.amount - (item.return_amount || 0),
     id: item.id,
     return_reason: '',
     return_description: '',
@@ -144,7 +152,7 @@ async function submitReturnItems() {
 
   const return_detail = returnItem.map((item) => ({
     product_id: item.product.id,
-    amount: item.amount,
+    amount: Number(item.return),
     invoice_detail_id: item.id,
     return_reason: item.return_reason,
     description: item.return_description
@@ -160,9 +168,9 @@ async function submitReturnItems() {
   apiFetch('/invoices/saveReturn', payload)
     .then((response) => {
       if (response.code === 2000) {
-        toast.success('ثبت شد')
+        toast.success('درخواست مرجوعی با موفقیت ثبت شد')
         dialogReturnedGoods.value = false
-        loadInvoice()
+        navigateTo(backLink.value)
       } else {
         toast.error(t(response.error))
       }
@@ -180,15 +188,19 @@ const convertToEnglishNumbers = (input) => {
   if (input) {
     return input.replace(/[۰-۹]/g, (match) => persianToEnglish[match])
   }
+  return input
 }
 
 const formatInput = (item) => {
-  item.return = String(item.return)
-  item.return = convertToEnglishNumbers(item.return)
-  if (item.return.length > 1 && item.return.startsWith('0')) {
-    item.return = item.return.replace(/^0/, '')
+  let val = String(item.return || 0)
+  val = convertToEnglishNumbers(val)
+  if (val.length > 1 && val.startsWith('0')) {
+    val = val.replace(/^0/, '')
   }
-  return Math.min(parseInt(item.return), parseInt(item.max_return_amount))
+  const num = parseInt(val) || 0
+  const max = parseInt(item.max_return_amount) || 0
+  item.return = Math.min(num, max)
+  return item.return
 }
 
 function openDialogChangeStatus() {
@@ -211,8 +223,14 @@ function updateStatus(id, status) {
   })
 }
 
+// فاکتور در انتظار پرداخت. اگه کالای فیزیکی (type_code = 1) داشته باشه به آدرس و زمان ارسال نیاز داره
+// که این صفحه پشتیبانی نمی‌کنه.
+const isAwaitingPayment = computed(() => Invoice.value.status_text === 'awaiting_payment')
+const hasShippable = computed(() => (Invoice.value.invoice_details || []).some((d) => d.products?.type_code === 1))
+
 const isAllReturned = computed(() => {
-  return returnData.value.every((item) => item.return_amount === item.amount)
+  if (!returnData.value.length) return true
+  return returnData.value.every((item) => item.max_return_amount === 0)
 })
 </script>
 
@@ -254,6 +272,7 @@ const isAllReturned = computed(() => {
         <DashboardPrintInvoice
           v-if="Invoice.status === 11 || Invoice.status === 6"
           :data="Invoice"
+          :custom="siteOptions"
           rounded="lg"
           color="blue"
           kind="invoice"
@@ -323,15 +342,10 @@ const isAllReturned = computed(() => {
           <thead>
             <tr class="border-b border-white/10 text-gray-400">
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ t('product_title') }}</th>
-              <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ t('brand') }}</th>
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ Invoice.status_text?.includes('return') ? 'تعداد مرجوعی' : t('quantity') }}</th>
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ t('price') }}</th>
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ t('discount') }}</th>
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ Invoice.status_text?.includes('return') ? 'مبلغ قابل استرداد' : t('total_price') }}</th>
-              <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">نوع پرداخت</th>
-              <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">تعداد اقساط</th>
-              <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">مبلغ هر قسط</th>
-              <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">مبلغ پیش‌پرداخت</th>
             </tr>
           </thead>
           <tbody>
@@ -339,18 +353,12 @@ const isAllReturned = computed(() => {
               <tr class="border-b border-white/5">
                 <td class="whitespace-nowrap px-2 py-2.5 text-center">
                   {{ item.price_kind === 0 ? 'خرید' : item.price_kind === 1 ? 'تمدید' : 'تجدید' }}
-                  {{ item.products.type_code === 1 ? 'محصول' : item.products.type_code === 2 ? 'خدمات' : item.products.type_code === 3 ? 'کارت' : 'دوره' }}
                   {{ item.products['title_' + language] }}
                 </td>
-                <td class="whitespace-nowrap px-2 py-2.5 text-center">{{ item.products['brand_' + language] }}</td>
                 <td class="px-2 py-2.5 text-center">{{ item.amount }}</td>
                 <td class="px-2 py-2.5 text-center">{{ numberWithSeparator(item.unit_price) }}</td>
                 <td class="px-2 py-2.5 text-center">{{ numberWithSeparator(item.discount_price) }}</td>
                 <td class="px-2 py-2.5 text-center">{{ numberWithSeparator(item.total_price) }}</td>
-                <td class="px-2 py-2.5 text-center">{{ item.product_installment_plan_id ? 'قسطی' : 'نقدی' }}</td>
-                <td class="px-2 py-2.5 text-center">{{ item.product_installment_plan_id ? item.installment_count : '---' }}</td>
-                <td class="px-2 py-2.5 text-center">{{ item.product_installment_plan_id ? numberWithSeparator(item.installment_amount) : '---' }}</td>
-                <td class="px-2 py-2.5 text-center">{{ item.product_installment_plan_id ? numberWithSeparator(item.cash_amount) : '---' }}</td>
               </tr>
               <tr v-if="Invoice.status_text?.includes('return') && item.description" class="border-b border-white/5 bg-purple-500/5">
                 <td colspan="12" class="px-2 py-2 text-start">
@@ -403,10 +411,6 @@ const isAllReturned = computed(() => {
           </div>
           <template v-if="!Invoice.status_text?.includes('return')">
             <div class="flex justify-between px-1">
-              <p>{{ t('send_price') }} :</p>
-              <strong class="text-white">{{ numberWithSeparator(Invoice.send_price ?? 0) }} {{ t(Invoice.currency_symbol) }}</strong>
-            </div>
-            <div class="flex justify-between px-1">
               <p>تخفیف پایه :</p>
               <strong class="text-white">{{ numberWithSeparator(Invoice.discount_price) }} {{ t(Invoice.currency_symbol) }}</strong>
             </div>
@@ -422,6 +426,14 @@ const isAllReturned = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- پرداخت فاکتور در انتظار پرداخت -->
+    <template v-if="!loading && !notFound && isAwaitingPayment">
+      <DashboardInvoicePayment v-if="!hasShippable" :invoice="Invoice" />
+      <div v-else class="glass-card rounded-3xl p-6 text-center text-sm text-gray-400">
+        این فاکتور شامل کالای فیزیکی است و برای پرداخت به انتخاب آدرس و زمان ارسال نیاز دارد.
+      </div>
+    </template>
 
     <!-- ================= DIALOG: transactions list for an installment (dialogAcc) ================= -->
     <Transition name="garnet-fade">
@@ -460,7 +472,7 @@ const isAllReturned = computed(() => {
                       type="button"
                       :disabled="btnLoadingPayment"
                       class="rounded-lg bg-indigo-500/10 border border-indigo-500/30 px-3 py-1.5 text-xs font-semibold text-indigo-300 disabled:opacity-60"
-                      @click="goPayment(item)"
+                      @click="goPayment(item.wallet_transactions_id)"
                     >
                       پرداخت
                     </button>

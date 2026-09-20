@@ -23,6 +23,7 @@ const translations = {
   description: 'توضیحات',
   order_value: 'مبلغ سفارش',
   send_price: 'هزینه ارسال',
+  awaiting_approval:' در انتظار تایید',
   close: 'بستن',
   transactions: 'تراکنش‌ها',
   no_transactions: 'تراکنشی یافت نشد',
@@ -61,29 +62,18 @@ function numberWithSeparator(value) {
   return number.toLocaleString('en-US')
 }
 
-// ===== جایگزین usePersianDate: مبدل میلادی به جلالی، بدون نیاز به پکیج جانبی =====
-function gregorianToJalali(gy, gm, gd) {
-  const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
-  let jy
-  const gy2 = gm > 2 ? gy + 1 : gy
-  let days = 355666 + 365 * gy2 + Math.floor((gy2 + 8) / 4) - Math.floor((gy2 + 100) / 100) + Math.floor((gy2 + 400) / 400) + gd + g_d_m[gm - 1]
-  jy = -1595 + 33 * Math.floor(days / 12053)
-  days %= 12053
-  jy += 4 * Math.floor(days / 1461)
-  days %= 1461
-  if (days > 365) {
-    jy += Math.floor((days - 1) / 365)
-    days = (days - 1) % 365
-  }
-  let jm, jd
-  if (days < 186) {
-    jm = 1 + Math.floor(days / 31)
-    jd = 1 + (days % 31)
-  } else {
-    jm = 7 + Math.floor((days - 186) / 30)
-    jd = 1 + ((days - 186) % 30)
-  }
-  return [jy, jm, jd]
+// ===== تبدیل میلادی به جلالی با Intl (بدون نیاز به پکیج جانبی) =====
+// خود مرورگر تقویم جلالی رو بلده؛ قبلاً یه الگوریتم دستی اینجا بود که همه‌ی تاریخ‌ها رو غلط (حدود یک سال جلوتر) نشون می‌داد.
+const jalaliFormatter = new Intl.DateTimeFormat('en-US-u-ca-persian-nu-latn', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit'
+})
+
+function toJalaliParts(date) {
+  const parts = {}
+  for (const p of jalaliFormatter.formatToParts(date)) parts[p.type] = p.value
+  return [Number(parts.year), Number(parts.month), Number(parts.day)]
 }
 
 function pad2(n) {
@@ -101,7 +91,7 @@ function formatJalali(input, { withTime = false, offsetMinutes = 0 } = {}) {
   const d = new Date(String(input).replace(' ', 'T'))
   if (Number.isNaN(d.getTime())) return String(input)
   if (offsetMinutes) d.setMinutes(d.getMinutes() + offsetMinutes)
-  const [jy, jm, jd] = gregorianToJalali(d.getFullYear(), d.getMonth() + 1, d.getDate())
+  const [jy, jm, jd] = toJalaliParts(d)
   let out = `${jy}/${pad2(jm)}/${pad2(jd)}`
   if (withTime) out += ` ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
   return toPersianDigits(out)
@@ -142,23 +132,25 @@ function getStatusBadgeClass(status) {
 }
 
 function getStatusText(item) {
-  const raw = item?.status_text || item?.statusLabel || item?.status_label || ''
-  if (!raw) return t('pending')
-  return t(raw) ?? raw
+  return item?.status_text ? t(item.status_text) : '---'
 }
 
-function getTypeText(item) {
-  const raw = item?.type_text || item?.typeLabel || item?.type_label || item?.kind_text || ''
-  if (!raw) return t('cash')
-  return t(raw) ?? raw
-}
-
+// تاریخ ستون «تاریخ» در لیست، تاریخ ایجاد رکورد (created_at) هست
 function getInvoicePrimaryDate(item) {
-  return formatJalali(item?.document_date || item?.created_at || item?.updated_at)
+  return formatJalali(item?.created_at)
 }
 
+// سفارش‌هایی که هنوز فاکتور نشدن شماره فاکتور ندارن، پس شماره سفارش جایگزینش نمی‌شه
 function getInvoiceCode(item) {
-  return item?.invoice_number || item?.tracking_code || item?.id || '---'
+  return item?.invoice_number ?? '---'
+}
+
+// جایگزین usePersianDate که PrintInvoice.vue صداش می‌زنه (پکیج تاریخ جلالی توی این پروژه نیست).
+// خروجی toString همیشه به‌صورت ۱۴۰۴/۰۵/۱۰ هست؛ فرمت ورودی نادیده گرفته می‌شه.
+export function usePersianDate(input) {
+  return {
+    toString: () => formatJalali(input)
+  }
 }
 
 export function usePurchaseRecords() {
@@ -181,7 +173,6 @@ export function usePurchaseRecords() {
     formatJalali,
     getStatusBadgeClass,
     getStatusText,
-    getTypeText,
     getInvoicePrimaryDate,
     getInvoiceCode
   }
