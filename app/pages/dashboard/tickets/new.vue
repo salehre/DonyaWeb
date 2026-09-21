@@ -12,28 +12,33 @@ useHead({
 
 const config = useRuntimeConfig()
 const headers = useApiHeaders()
+// برای آپلود فایل نباید Content-Type دستی ست شود؛ مرورگر خودش multipart + boundary را می‌سازد
+const uploadHeaders = useApiHeaders('')
+const toast = useToast()
 
-const {
-  data: departmentsData,
-  refresh: refreshDepartments,
-  pending: departmentsPending,
-} = await useFetch(
-  `${config.public.apiBase}/tickets/indexDepartments`,
-  {
-    method: 'POST',
-    headers,
-    immediate: false,
-  }
-)
+const departments = ref<any[]>([])
+const departmentsPending = ref(true)
 
 onMounted(async () => {
-  await refreshDepartments()
+  try {
+    const result: any = await $fetch(`${config.public.apiBase}/tickets/indexDepartments`, {
+      method: 'POST',
+      headers: headers.value,
+    })
+
+    departments.value = result && (result.TicketDepartments || result.ticketDepartments) ? (result.TicketDepartments || result.ticketDepartments) : []
+  } catch (error) {
+    console.error('Departments fetch error:', error)
+  } finally {
+    departmentsPending.value = false
+  }
 })
 
+// value رشته است چون StartCustomSelect مقدار modelValue را String و با === مقایسه می‌کند
 const departmentOptions = computed(() =>
-  (departmentsData.value?.TicketDepartments ?? []).map(item => ({
-    value: item.id,
-    label: item.title,
+  departments.value.map((item: any) => ({
+    value: String(item.id),
+    label: item.title ?? item.name,
   }))
 )
 
@@ -45,25 +50,62 @@ const priorities = [
 
 const priorityOptions = computed(() => priorities)
 
+function isSuccessResponse(payload: any) {
+  if (!payload) return false
+
+  const nested = payload.data ?? payload.result ?? payload.response ?? null
+  const code = Number(payload.code ?? nested?.code)
+  const status = payload.status ?? nested?.status ?? null
+
+  return (
+    code === 2000 ||
+    Number(status) === 2000 ||
+    status === 'success' ||
+    payload.success === true ||
+    nested?.success === true ||
+    payload.message === 'success' ||
+    !!(payload.Ticket || payload.ticket || nested?.Ticket || nested?.ticket)
+  )
+}
+
 const subject = ref('')
-const department = ref<number | null>(null)
+const department = ref('')
 const priority = ref('normal')
 const message = ref('')
-const attachments = ref([])
+const attachments = ref<File[]>([])
 const isSubmitting = ref(false)
-
-const toast = useToast()
-const { addTicket } = useDashboard()
 
 watch(
   departmentOptions,
   (options) => {
     if (!department.value && options.length) {
-      department.value = options[0].value
+      department.value = String(options[0]?.value ?? '')
     }
   },
   { immediate: true }
 )
+
+async function uploadAttachment(file: File) {
+  const formData = new FormData()
+  formData.append('image', file)
+
+  const res: any = await $fetch(`${config.public.apiBase}/uploadImage`, {
+    method: 'POST',
+    headers: uploadHeaders.value,
+    body: formData,
+  })
+
+  const list = res?.UploadedImages ?? res?.uploadedImages ?? res?.images
+  const uploaded = (Array.isArray(list) ? list[0] : null) ?? res?.image ?? null
+
+  if (!uploaded || !isSuccessResponse(res)) {
+    console.error('Upload response:', res)
+    throw new Error('خطا در آپلود فایل')
+  }
+
+  // همان فرمتی که صفحه‌ی پاسخ به تیکت ([id].vue) می‌فرستد
+  return typeof uploaded === 'string' ? { file: uploaded } : uploaded
+}
 
 async function handleSubmit() {
   if (!subject.value || !message.value || !department.value) {
@@ -74,98 +116,51 @@ async function handleSubmit() {
   isSubmitting.value = true
 
   try {
-    const ticketFiles = []
+    const ticketFiles: any[] = []
 
     // آپلود فایل‌ها
-    if (attachments.value.length) {
-      for (const file of attachments.value) {
-        const formData = new FormData()
-        formData.append('image', file)
-
-        const { data: uploadRes } = await useFetch(
-          `${config.public.apiBase}/uploadImage`,
-          {
-            method: 'POST',
-            headers,
-            body: formData,
-          }
-        )
-
-        if (uploadRes.value?.code !== 2000) {
-          throw new Error('خطا در آپلود فایل')
-        }
-
-        ticketFiles.push({
-          file: uploadRes.value.UploadedImages[0],
-        })
-      }
+    for (const file of attachments.value) {
+      ticketFiles.push(await uploadAttachment(file))
     }
 
     // ثبت تیکت
-    const { data: createRes } = await useFetch(
-      `${config.public.apiBase}/tickets/create`,
-      {
-        method: 'POST',
-        headers,
-        body: {
-          title: subject.value,
-          description: `<p>${message.value}</p>`,
-          department: department.value,
-          type: 1,
-          product_id: null,
-          ticket_files: ticketFiles,
-        },
-      }
-    )
+    const createRes: any = await $fetch(`${config.public.apiBase}/tickets/create`, {
+      method: 'POST',
+      headers: headers.value,
+      body: {
+        title: subject.value,
+        description: `<p>${message.value}</p>`,
+        department: Number(department.value),
+        priority: priority.value,
+        type: 1,
+        product_id: null,
+        ticket_files: ticketFiles,
+      },
+    })
 
-    if (createRes.value?.code !== 2000) {
+    if (!isSuccessResponse(createRes)) {
+      console.error('Create ticket response:', createRes)
       throw new Error('ثبت تیکت ناموفق بود')
     }
 
     toast.success('تیکت با موفقیت ثبت شد.')
 
     await navigateTo('/dashboard/tickets')
-  } catch (err) {
-    console.error(err)
-    toast.error('خطایی در ثبت تیکت رخ داد.')
+  } catch (err: any) {
+    console.error('Ticket submit error:', err, err?.data)
+
+    const apiMessage = err?.data?.message
+    toast.error(
+      typeof apiMessage === 'string' && apiMessage
+        ? apiMessage
+        : err?.name === 'FetchError'
+          ? 'خطایی در ثبت تیکت رخ داد.'
+          : err?.message || 'خطایی در ثبت تیکت رخ داد.'
+    )
   } finally {
     isSubmitting.value = false
   }
 }
-
-// async function handleSubmit() {
-//   if (!subject.value || !message.value || !department.value) {
-//     toast.error('لطفاً تمام فیلدهای ضروری را تکمیل کنید.')
-//     return
-//   }
-
-//   isSubmitting.value = true
-
-//   try {
-//     // TODO: API ثبت تیکت
-
-//     await new Promise(resolve => setTimeout(resolve, 800))
-
-//     const departmentLabel =
-//       departmentOptions.value.find(d => d.value === department.value)?.label ?? ''
-
-//     const created = addTicket({
-//       subject: subject.value.trim(),
-//       department: departmentLabel,
-//       priority: priority.value,
-//       message: message.value.trim(),
-//       attachments: [...attachments.value],
-//     })
-
-//     toast.success('تیکت شما با موفقیت ثبت شد.')
-
-//     await navigateTo(`/dashboard/tickets/${created.id}`)
-//   } catch (e) {
-//     toast.error('خطایی در ثبت تیکت رخ داد.')
-//   } finally {
-//     isSubmitting.value = false
-//   }
-// }
 </script>
 
 <template>

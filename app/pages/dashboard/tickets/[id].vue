@@ -1,46 +1,166 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { ArrowRight, Send, Paperclip } from 'lucide-vue-next'
 
 definePageMeta({ layout: 'dashboard' })
 
 const route = useRoute()
-const { getTicketById, addTicketMessage, user } = useDashboard()
+const config = useRuntimeConfig()
+const headers = useApiHeaders()
+const { user } = useUserInfo()
+const toast = useToast()
 
-const ticket = getTicketById(route.params.id)
+const ticketData = ref(null)
+const ticketPending = ref(true)
+const ticketError = ref(null)
 
-if (!ticket) {
-  throw createError({ statusCode: 404, statusMessage: 'تیکت مورد نظر پیدا نشد' })
-}
+onMounted(async () => {
+  try {
+    const result = await $fetch(`${config.public.apiBase}/tickets/show`, {
+      method: 'POST',
+      headers: headers.value,
+      body: {
+        id: route.params.id,
+      },
+    })
 
-useHead({
-  title: `${ticket.subject} | دنیاوب`
+    ticketData.value = result
+  } catch (error) {
+    ticketError.value = error
+    console.error('ticket fetch error:', error)
+  } finally {
+    ticketPending.value = false
+  }
+});
+
+const rawTicket = computed(() => {
+  const payload = ticketData.value
+  if (!payload) return null
+  return payload.Ticket ?? payload.ticket ?? payload.data ?? payload.result ?? null
 })
 
-const localMessages = ref([...ticket.messages])
+function normalizeMessage(message) {
+  return {
+    from: message?.from ?? (message?.is_admin ? 'support' : 'user'),
+    name: message?.name ?? message?.sender_name ?? message?.user_name ?? 'کاربر',
+    text: message?.text ?? message?.message ?? '',
+    date: message?.created_at ?? message?.date ?? 'همین الان',
+    attachments: Array.isArray(message?.attachments) ? message.attachments : [],
+  }
+}
+
+function normalizeTicket(ticket) {
+  if (!ticket) return null
+
+  const normalizedStatus = String(ticket.status_text ?? ticket.status ?? 'open').toLowerCase()
+
+  return {
+    id: ticket.id ?? route.params.id,
+    subject: ticket.title ?? ticket.subject ?? 'تیکت بدون عنوان',
+    department: ticket.department_title ?? ticket.department ?? '—',
+    status: normalizedStatus.includes('closed') ? 'closed' : normalizedStatus.includes('answered') ? 'answered' : normalizedStatus.includes('open') ? 'open' : normalizedStatus || 'open',
+    date: ticket.created_at ?? ticket.date ?? 'همین الان',
+    messages: Array.isArray(ticket.messages) ? ticket.messages.map(normalizeMessage) : [],
+  }
+}
+
+const ticket = computed(() => normalizeTicket(rawTicket.value))
+const localMessages = ref([])
 const reply = ref('')
 const replyAttachments = ref([])
 const isSending = ref(false)
 
+watch(
+  ticket,
+  (value) => {
+    if (value && !localMessages.value.length) {
+      localMessages.value = [...value.messages]
+    }
+  },
+  { immediate: true }
+)
+
+watch(
+  ticketError,
+  (error) => {
+    if (error) {
+      console.error('ticket fetch error:', error)
+    }
+  }
+);
+
+async function uploadFiles(files) {
+  const uploaded = []
+
+  if (!files.length) return uploaded
+
+  for (const file of files) {
+    const formData = new FormData()
+    formData.append('image', file)
+
+    const uploadRes = await $fetch(`${config.public.apiBase}/uploadImage`, {
+      method: 'POST',
+      headers: headers.value,
+      body: formData,
+    })
+
+    const payload = uploadRes
+    const code = payload?.code ?? payload?.data?.code
+    if (code !== 2000 && payload?.status !== 'success') {
+      throw new Error('خطا در آپلود فایل پیوست')
+    }
+
+    const image = payload?.UploadedImages?.[0] ?? payload?.uploadedImages?.[0] ?? payload?.image
+    if (image) {
+      uploaded.push({ file: image })
+    }
+  }
+
+  return uploaded
+}
+
 async function sendReply() {
-  if (!reply.value.trim()) return
+  if (!reply.value.trim() || !ticket.value) return
+
   isSending.value = true
 
-  // TODO: اتصال به API واقعی ثبت پاسخ تیکت (شامل آپلود واقعی فایل‌های پیوستی)
-  await new Promise((resolve) => setTimeout(resolve, 600))
+  try {
+    const uploadedFiles = await uploadFiles(replyAttachments.value)
 
-  const newMessage = {
-    from: 'user',
-    name: user.name,
-    text: reply.value.trim(),
-    date: 'همین الان',
-    attachments: [...replyAttachments.value]
+    const replyRes = await $fetch(`${config.public.apiBase}/tickets/reply`, {
+      method: 'POST',
+      headers: headers.value,
+      body: {
+        id: Number(ticket.value.id),
+        message: reply.value.trim(),
+        ticket_files: uploadedFiles,
+      },
+    })
+
+    const success = (replyRes && replyRes.code === 2000) || (replyRes && replyRes.status === 'success') || (replyRes && replyRes.success === true)
+
+    if (!success) {
+      throw new Error('ارسال پاسخ ناموفق بود')
+    }
+
+    const newMessage = {
+      from: 'user',
+      name: user?.value?.full_name || user?.value?.first_name || 'کاربر',
+      text: reply.value.trim(),
+      date: 'همین الان',
+      attachments: [...replyAttachments.value],
+    }
+
+    localMessages.value.push(newMessage)
+    reply.value = ''
+    replyAttachments.value = []
+    toast.success('پاسخ شما با موفقیت ارسال شد.')
+  } catch (error) {
+    console.error(error)
+    toast.error('ارسال پاسخ با مشکل مواجه شد.')
+  } finally {
+    isSending.value = false
   }
-  addTicketMessage(ticket.id, newMessage)
-  localMessages.value.push(newMessage)
-  reply.value = ''
-  replyAttachments.value = []
-  isSending.value = false
 }
 
 function isFileObject(att) {
@@ -57,10 +177,30 @@ function formatSize(bytes) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} کیلوبایت`
   return `${(bytes / (1024 * 1024)).toFixed(1)} مگابایت`
 }
+
+watch(
+  ticket,
+  (value) => {
+    if (value) {
+      useHead({
+        title: `${value.subject} | دنیاوب`,
+      })
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto space-y-6">
+  <div v-if="ticketPending" class="max-w-3xl mx-auto py-10 text-center text-gray-400">
+    در حال بارگذاری تیکت...
+  </div>
+
+  <div v-else-if="!ticket" class="max-w-3xl mx-auto py-10 text-center text-red-400">
+    تیکت مورد نظر پیدا نشد.
+  </div>
+
+  <div v-else class="max-w-3xl mx-auto space-y-6">
     <div class="flex items-center justify-between">
       <NuxtLink to="/dashboard/tickets" class="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
         <ArrowRight class="w-4 h-4" />

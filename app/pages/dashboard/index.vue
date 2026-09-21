@@ -12,17 +12,28 @@ const { user } = useUserInfo()
 const config = useRuntimeConfig()
 const headers = useApiHeaders();
 
-console.log(user.value)
+const tickets = ref([])
+const pending = ref(true)
+const error = ref(null)
 
-const { data, refresh, pending, error } = await useFetch(`${config.public.apiBase}/tickets/indexByUserId`, {
-  method: 'POST',
-  headers,
-  body: {
-    status: "1,2,3,4,5,6"
-  },
+onMounted(async () => {
+  try {
+    const result = await $fetch(`${config.public.apiBase}/tickets/indexByUserId`, {
+      method: 'POST',
+      headers: headers.value,
+      body: {
+        status: '1,2,3,4,5,6',
+      },
+    })
+
+    tickets.value = result && (result.Tickets || result.tickets) ? (result.Tickets || result.tickets) : []
+  } catch (err) {
+    error.value = err
+    console.error('Dashboard tickets fetch error:', err)
+  } finally {
+    pending.value = false
+  }
 })
-
-const tickets = computed(() => data.value?.Tickets ?? [])
 
 const { stats, getExpiringServices } = useDashboard()
 

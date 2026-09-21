@@ -8,26 +8,44 @@ const config = useRuntimeConfig()
 
 const headers = useApiHeaders();
 
-const { data, refresh, pending, error } = await useFetch(`${config.public.apiBase}/tickets/indexByUserId`, {
-  method: 'POST',
-  headers,
-  body: {
-    status: "1,2,3,4,5,6"
-  },
-  immediate: false,
-})
+const tickets = ref<any[]>([])
+const pending = ref(true)
+const error = ref<unknown>(null)
 
 onMounted(async () => {
-  await refresh()
+  try {
+    const result = await $fetch(`${config.public.apiBase}/tickets/indexByUserId`, {
+      method: 'POST',
+      headers: headers.value,
+      body: {
+        status: '1,2,3,4,5,6',
+      },
+    })
+
+    tickets.value = result && (result.Tickets || result.tickets) ? (result.Tickets || result.tickets) : []
+  } catch (err) {
+    error.value = err
+    console.error('Tickets list fetch error:', err)
+  } finally {
+    pending.value = false
+  }
 })
 
-const tickets = computed(() => data.value?.Tickets ?? [])
-
-const priorityLabels = {
+const priorityLabels: Record<string, { label: string; class: string }> = {
   low: { label: 'کم', class: 'text-gray-400' },
   normal: { label: 'عادی', class: 'text-yellow-400' },
   high: { label: 'فوری', class: 'text-red-400' },
 }
+
+watch(
+  error,
+  (err) => {
+    if (err) {
+      console.error('Tickets list fetch error:', err)
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -103,7 +121,7 @@ const priorityLabels = {
 
         <NuxtLink
           to="/dashboard/tickets/new"
-          class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition"
+          class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition"
         >
           <TicketPlus class="w-4 h-4" />
           ثبت تیکت جدید
