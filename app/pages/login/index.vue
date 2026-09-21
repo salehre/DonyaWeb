@@ -105,7 +105,7 @@ async function handleLogin() {
           <div>
             <div class="flex items-center justify-between mb-2">
               <label for="password" class="block text-sm text-gray-300">رمز عبور</label>
-              <NuxtLink to="/forgot-password" class="text-xs text-purple-300 hover:text-purple-200 transition-colors">فراموشی رمز عبور؟</NuxtLink>
+              <NuxtLink to="/forgot-password" tabindex="-1" class="text-xs text-purple-300 hover:text-purple-200 transition-colors">فراموشی رمز عبور؟</NuxtLink>
             </div>
             <div class="relative">
               <Lock class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />

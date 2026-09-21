@@ -18,11 +18,9 @@ const paymentProcedure = ref([])
 const paymentOption = ref(null)
 const walletInfo = ref(null)
 
-// مبلغی که همین الان باید پرداخت بشه: جمع بخش نقدی اقلام (پیش‌پرداخت در فاکتور قسطی) منهای کد تخفیف
-const payableAmount = computed(() => {
-  const cash = (props.invoice.invoice_details || []).reduce((sum, d) => sum + (Number(d.cash_amount) || 0), 0)
-  return cash - (Number(props.invoice.other_price) || 0)
-})
+// مبلغی که همین الان باید پرداخت بشه: همون total_price نهایی فاکتور (بعد از کسر تخفیف پایه و کد تخفیف)
+// توجه: invoice_details فیلدی به اسم cash_amount نداره؛ فیلد واقعی هر آیتم total_price هست (مثل جدول همین صفحه)
+const payableAmount = computed(() => Number(props.invoice.total_price) || 0)
 
 // وقتی کیف پول انتخاب شده، تا سقف موجودی از کیف پول کم می‌شه
 const walletDecrease = computed(() => {
@@ -103,11 +101,9 @@ async function goPayment() {
       invoiceId: props.invoice.id,
       selectedPaymentProcedure: paymentOption.value.pp_id,
       selectedGateway: paymentOption.value.gateway_id,
+      noDelivery: true,
+      selectedAddress: null,
       // فاکتور بدون کالای فیزیکی: همون مقادیر پیش‌فرضی که نمونه می‌فرسته
-      send_type: 261,
-      send_type_past: null,
-      selectedTime: null,
-      selectedDate: null,
       description: ''
     })
 

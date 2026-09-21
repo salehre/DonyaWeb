@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { User, AtSign, Phone, Lock, Save, CreditCard, Hash, Calendar } from 'lucide-vue-next'
+import DashboardDatePicker from '~/components/Dashboard/DatePicker.vue'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -13,11 +14,42 @@ useHead({
 })
 
 const { user, setUser, fetchUser } = useUserInfo()
+const toast = useToast()
 
-// ---- وضعیت لودینگ اولیه صفحه ----
-const isLoading = ref(true)
+// ---- کمکی‌های ورودی عددی ----
 
-// ---- اطلاعات پروفایل (فقط نمایش؛ از users/userInfo → User) ----
+function toEnglishDigits(value) {
+  return String(value || '')
+    .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+}
+
+// ورودی‌ای که فقط عدد می‌پذیرد: مقدار DOM را هم اصلاح می‌کند (فقط عوض کردن state کافی نیست،
+// چون اگر state تغییری نکند Vue مقدار input را دوباره رندر نمی‌کند و حرف تایپ‌شده در فیلد می‌ماند)
+function sanitizeInput(event, normalize) {
+  const el = event.target
+  const raw = el.value
+  const cleaned = normalize(raw)
+
+  if (raw !== cleaned) {
+    const caret = Math.max((el.selectionStart ?? raw.length) - (raw.length - cleaned.length), 0)
+    el.value = cleaned
+    el.setSelectionRange(caret, caret)
+  }
+
+  return cleaned
+}
+
+function pad(n) {
+  return String(n).padStart(2, '0')
+}
+
+function todayIso() {
+  const now = new Date()
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+}
+
+// ---- اطلاعات پروفایل (از users/userInfo → User) ----
 
 const u = computed(() => user.value || {})
 
@@ -27,8 +59,6 @@ onMounted(async () => {
     await fetchUser()
   } catch (err) {
     console.error('User info refresh error:', err, err?.data)
-  } finally {
-    isLoading.value = false
   }
 })
 
@@ -42,14 +72,6 @@ function isTrue(value) {
   return value === true || value === 1 || value === '1'
 }
 
-// تاریخ تولد فقط روز است؛ بدون جابه‌جایی منطقه‌ی زمانی
-const dateOnlyFormatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  timeZone: 'UTC'
-})
-
 // تاریخ‌وساعت‌های سرور UTC هستند → نمایش به وقت تهران
 const dateTimeFormatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
   year: 'numeric',
@@ -60,12 +82,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
   hourCycle: 'h23',
   timeZone: 'Asia/Tehran'
 })
-
-function formatBirthDate(value) {
-  if (!value) return ''
-  const date = new Date(`${String(value).slice(0, 10)}T00:00:00Z`)
-  return Number.isNaN(date.getTime()) ? String(value) : dateOnlyFormatter.format(date)
-}
 
 function formatDateTime(value) {
   if (!value) return ''
@@ -86,6 +102,7 @@ const avatarLetter = computed(() => u.value.first_name?.charAt(0) || u.value.ful
 
 const statusLabel = computed(() => statusLabels[u.value.status_text] ?? u.value.status_text ?? '')
 
+// فیلدهای فقط‌نمایشی (کد ملی و تاریخ تولد پایین‌تر در فرم قابل ویرایش هستند)
 const infoRows = computed(() => {
   const data = u.value
   const gender = genderLabels[data.gender_text]
@@ -94,18 +111,126 @@ const infoRows = computed(() => {
     { label: 'نام', value: data.first_name, icon: User },
     { label: 'نام خانوادگی', value: data.last_name, icon: User },
     { label: 'شماره موبایل', value: formatMobile(data.mobile), icon: Phone, ltr: true, verified: isTrue(data.verified_mobile) },
-    { label: 'ایمیل', value: data.email, icon: AtSign, ltr: true, verified: data.email ? isTrue(data.verified_email) : null },
-    { label: 'کد ملی', value: data.national_code, icon: Hash, ltr: true },
-    { label: 'تاریخ تولد', value: formatBirthDate(data.birth_date), icon: Calendar },
-    { label: 'تاریخ عضویت', value: formatDateTime(data.register_date), icon: Calendar }
+    { label: 'ایمیل', value: data.email, icon: AtSign, ltr: true, verified: data.email ? isTrue(data.verified_email) : null }
   ]
 
   if (gender) {
-    rows.splice(6, 0, { label: 'جنسیت', value: gender, icon: User })
+    rows.push({ label: 'جنسیت', value: gender, icon: User })
   }
+
+  rows.push({ label: 'تاریخ عضویت', value: formatDateTime(data.register_date), icon: Calendar })
 
   return rows
 })
+
+// ---- اطلاعات هویتی: کد ملی و تاریخ تولد (قابل ویرایش) ----
+
+function normalizeNationalCode(value) {
+  return toEnglishDigits(value).replace(/\D/g, '').slice(0, 10)
+}
+
+// اعتبارسنجی کد ملی ایران (ده رقم + رقم کنترل)
+function isValidNationalCode(value) {
+  const code = normalizeNationalCode(value)
+
+  if (!/^\d{10}$/.test(code)) return false
+  if (/^(\d)\1{9}$/.test(code)) return false
+
+  const sum = code
+    .slice(0, 9)
+    .split('')
+    .reduce((total, digit, index) => total + Number(digit) * (10 - index), 0)
+
+  const remainder = sum % 11
+  const check = Number(code[9])
+
+  return remainder < 2 ? check === remainder : check === 11 - remainder
+}
+
+const nationalCode = ref(normalizeNationalCode(user.value?.national_code))
+// birth_date در API به‌صورت میلادی 'YYYY-MM-DD' است؛ DashboardDatePicker (نمایش شمسی) همین فرمت را می‌گیرد و برمی‌گرداند
+const birthDate = ref(String(user.value?.birth_date ?? '').slice(0, 10))
+const isSavingIdentity = ref(false)
+
+// وقتی اطلاعات تازه از API رسید، فرم هم به‌روز می‌شود
+watch(
+  [() => u.value.national_code, () => u.value.birth_date],
+  ([code, birth]) => {
+    nationalCode.value = normalizeNationalCode(code)
+    birthDate.value = String(birth ?? '').slice(0, 10)
+  }
+)
+
+// can_update: '1' یعنی کاربر اجازه‌ی ویرایش دارد (اگر فیلد نبود، ویرایش مجاز فرض می‌شود)
+const canUpdate = computed(() => (u.value.can_update === undefined ? true : isTrue(u.value.can_update)))
+
+function onNationalCodeInput(event) {
+  nationalCode.value = sanitizeInput(event, normalizeNationalCode)
+}
+
+async function saveIdentity() {
+  if (isSavingIdentity.value) return
+
+  const payload = {}
+
+  if (nationalCode.value) {
+    if (!isValidNationalCode(nationalCode.value)) {
+      toast.error('کد ملی وارد شده معتبر نیست')
+      return
+    }
+    payload.national_code = nationalCode.value
+  }
+
+  if (birthDate.value) {
+    if (birthDate.value > todayIso()) {
+      toast.error('تاریخ تولد نمی‌تواند در آینده باشد')
+      return
+    }
+    payload.birth_date = birthDate.value
+  }
+
+  if (!Object.keys(payload).length) {
+    toast.info('کد ملی یا تاریخ تولد را وارد کنید')
+    return
+  }
+
+  isSavingIdentity.value = true
+
+  try {
+    const response = await $fetch(`${baseUrl}/users/update`, {
+      method: 'POST',
+      headers: headers.value,
+      body: payload
+    })
+
+    if (Number(response?.code) === 2000) {
+      toast.success('اطلاعات ثبت شد.')
+
+      // اطلاعات ذخیره‌شده را دوباره از userInfo می‌گیریم؛ اگر نشد، همان مقادیر را محلی ثبت می‌کنیم
+      try {
+        await fetchUser()
+      } catch (refreshError) {
+        console.error('User info refresh error:', refreshError)
+        setUser({ ...(user.value || {}), ...payload })
+      }
+    } else {
+      console.error('users/update response:', response)
+      toast.error(response?.error || response?.msg || response?.message || 'خطا در ثبت اطلاعات')
+    }
+  } catch (err) {
+    console.error('users/update error:', err, err?.data)
+
+    const message =
+      err?.data?.message ||
+      err?.data?.error ||
+      err?.data?.msg ||
+      'خطا در ثبت اطلاعات'
+
+    toast.error(message)
+  } finally {
+    isSavingIdentity.value = false
+  }
+}
 
 // ---- تنظیمات اعلان‌ها ----
 
@@ -123,7 +248,6 @@ const notifications = ref({
 })
 
 const isSavingPassword = ref(false)
-const toast = useToast()
 
 // ---- اطلاعات بانکی ----
 
@@ -138,12 +262,6 @@ const ibanNumber = ref(
 
 const isSavingBankInfo = ref(false)
 
-function toEnglishDigits(value) {
-  return String(value || '')
-    .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
-    .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
-}
-
 function normalizeShebaInput(value) {
   return toEnglishDigits(value)
     .toUpperCase()
@@ -153,8 +271,9 @@ function normalizeShebaInput(value) {
     .slice(0, 24)
 }
 
+// فقط عدد: هر کاراکتر غیرعددی همان لحظه از فیلد حذف می‌شود (ارقام فارسی/عربی به انگلیسی تبدیل می‌شوند)
 function onIbanInput(event) {
-  ibanNumber.value = normalizeShebaInput(event.target.value)
+  ibanNumber.value = sanitizeInput(event, normalizeShebaInput)
 }
 
 function isValidShebaNumber(value) {
@@ -275,239 +394,226 @@ async function savePassword() {
 
 <template>
   <div class="max-w-3xl mx-auto space-y-6">
+    <!-- Profile -->
+    <div class="glass-card rounded-3xl p-6 sm:p-8">
+      <div class="flex items-center gap-4 mb-6">
+        <div
+          class="w-14 h-14 rounded-full bg-linear-to-br from-purple-500 to-blue-600 flex items-center justify-center text-lg font-bold shrink-0"
+        >
+          {{ avatarLetter }}
+        </div>
 
-    <!-- ===================== SKELETON ===================== -->
-    <template v-if="isLoading">
-      <!-- Profile Skeleton -->
-      <div class="glass-card rounded-3xl p-6 sm:p-8 animate-pulse">
-        <div class="flex items-center gap-4 mb-6">
-          <div class="w-14 h-14 rounded-full bg-white/10 shrink-0"></div>
-          <div class="min-w-0 flex-1 space-y-2">
-            <div class="h-4 w-40 rounded bg-white/10"></div>
-            <div class="h-3 w-28 rounded bg-white/10"></div>
+        <div class="min-w-0">
+          <h2 class="text-lg font-bold truncate">{{ u.full_name || 'اطلاعات پروفایل' }}</h2>
+          <p class="text-xs text-gray-500">
+            <template v-if="u.id">
+              کد کاربری: <span dir="ltr">#{{ u.id }}</span>
+            </template>
+            <template v-if="statusLabel"> · وضعیت حساب: {{ statusLabel }}</template>
+          </p>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div
+          v-for="row in infoRows"
+          :key="row.label"
+          class="rounded-2xl bg-white/5 border border-white/10 px-4 py-3"
+        >
+          <p class="flex items-center gap-2 text-xs text-gray-400 mb-1">
+            <component :is="row.icon" class="w-4 h-4" />
+            {{ row.label }}
+          </p>
+
+          <div class="flex items-center justify-between gap-2">
+            <span
+              class="text-sm font-medium truncate"
+              :class="row.value ? 'text-white' : 'text-gray-500'"
+              :dir="row.ltr && row.value ? 'ltr' : undefined"
+            >
+              {{ row.value || 'ثبت نشده' }}
+            </span>
+
+            <span
+              v-if="row.verified !== null && row.verified !== undefined"
+              class="text-[11px] px-2 py-0.5 rounded-full border whitespace-nowrap"
+              :class="row.verified ? green : gray"
+            >
+              {{ row.verified ? 'تأیید شده' : 'تأیید نشده' }}
+            </span>
           </div>
         </div>
+      </div>
+
+      <!-- Identity (editable) -->
+      <form class="mt-8 pt-6 border-t border-white/10 space-y-5" @submit.prevent="saveIdentity">
+        <h3 class="text-base font-bold">اطلاعات هویتی</h3>
 
         <div class="grid sm:grid-cols-2 gap-4">
-          <div
-            v-for="n in 7"
-            :key="n"
-            class="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 space-y-2"
-          >
-            <div class="h-3 w-20 rounded bg-white/10"></div>
-            <div class="h-4 w-32 rounded bg-white/10"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bank Info Skeleton -->
-      <div class="glass-card rounded-3xl p-6 sm:p-8 animate-pulse">
-        <div class="h-5 w-32 rounded bg-white/10 mb-6"></div>
-        <div class="space-y-3">
-          <div class="h-3 w-20 rounded bg-white/10"></div>
-          <div class="h-12 w-full rounded-xl bg-white/5 border border-white/10"></div>
-          <div class="h-3 w-48 rounded bg-white/10"></div>
-        </div>
-        <div class="h-11 w-40 rounded-xl bg-white/10 mt-5"></div>
-      </div>
-
-      <!-- Password Skeleton -->
-      <div class="glass-card rounded-3xl p-6 sm:p-8 animate-pulse">
-        <div class="h-5 w-32 rounded bg-white/10 mb-6"></div>
-        <div class="space-y-5">
-          <div class="space-y-2">
-            <div class="h-3 w-24 rounded bg-white/10"></div>
-            <div class="h-12 w-full rounded-xl bg-white/5 border border-white/10"></div>
-          </div>
-          <div class="grid sm:grid-cols-2 gap-4">
-            <div class="space-y-2">
-              <div class="h-3 w-24 rounded bg-white/10"></div>
-              <div class="h-12 w-full rounded-xl bg-white/5 border border-white/10"></div>
-            </div>
-            <div class="space-y-2">
-              <div class="h-3 w-24 rounded bg-white/10"></div>
-              <div class="h-12 w-full rounded-xl bg-white/5 border border-white/10"></div>
-            </div>
-          </div>
-        </div>
-        <div class="h-11 w-40 rounded-xl bg-white/10 mt-5"></div>
-      </div>
-
-      <!-- Notifications Skeleton -->
-      <div class="glass-card rounded-3xl p-6 sm:p-8 animate-pulse">
-        <div class="h-5 w-36 rounded bg-white/10 mb-6"></div>
-        <div class="space-y-4">
-          <div v-for="n in 4" :key="n" class="flex items-center justify-between gap-4">
-            <div class="h-3 w-48 rounded bg-white/10"></div>
-            <div class="w-5 h-5 rounded bg-white/10"></div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <!-- ===================== CONTENT ===================== -->
-    <template v-else>
-      <!-- Profile -->
-      <div class="glass-card rounded-3xl p-6 sm:p-8">
-        <div class="flex items-center gap-4 mb-6">
-          <div
-            class="w-14 h-14 rounded-full bg-linear-to-br from-purple-500 to-blue-600 flex items-center justify-center text-lg font-bold shrink-0"
-          >
-            {{ avatarLetter }}
-          </div>
-
-          <div class="min-w-0">
-            <h2 class="text-lg font-bold truncate">{{ u.full_name || 'اطلاعات پروفایل' }}</h2>
-            <p class="text-xs text-gray-500">
-              <template v-if="u.id">
-                کد کاربری: <span dir="ltr">#{{ u.id }}</span>
-              </template>
-              <template v-if="statusLabel"> · وضعیت حساب: {{ statusLabel }}</template>
-            </p>
-          </div>
-        </div>
-
-        <div class="grid sm:grid-cols-2 gap-4">
-          <div
-            v-for="row in infoRows"
-            :key="row.label"
-            class="rounded-2xl bg-white/5 border border-white/10 px-4 py-3"
-          >
-            <p class="flex items-center gap-2 text-xs text-gray-400 mb-1">
-              <component :is="row.icon" class="w-4 h-4" />
-              {{ row.label }}
-            </p>
-
-            <div class="flex items-center justify-between gap-2">
-              <span
-                class="text-sm font-medium truncate"
-                :class="row.value ? 'text-white' : 'text-gray-500'"
-                :dir="row.ltr && row.value ? 'ltr' : undefined"
-              >
-                {{ row.value || 'ثبت نشده' }}
-              </span>
-
-              <span
-                v-if="row.verified !== null && row.verified !== undefined"
-                class="text-[11px] px-2 py-0.5 rounded-full border whitespace-nowrap"
-                :class="row.verified ? green : gray"
-              >
-                {{ row.verified ? 'تأیید شده' : 'تأیید نشده' }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bank Info -->
-      <div class="glass-card rounded-3xl p-6 sm:p-8">
-        <h2 class="text-lg font-bold mb-6">اطلاعات بانکی</h2>
-
-        <form class="space-y-5" @submit.prevent="saveBankInfo">
           <div>
-            <label for="iban-number" class="block text-sm text-gray-300 mb-2">
-              شماره شبا
+            <label for="national-code" class="block text-sm text-gray-300 mb-2">
+              کد ملی
             </label>
 
             <div class="relative">
-              <CreditCard class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-
-              <span class="absolute top-1/2 -translate-y-1/2 left-4 text-gray-400 font-medium">
-                IR
-              </span>
+              <Hash class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
 
               <input
-                id="iban-number"
-                :value="ibanNumber"
-                @input="onIbanInput"
+                id="national-code"
+                :value="nationalCode"
+                @input="onNationalCodeInput"
+                :disabled="!canUpdate"
                 type="text"
                 inputmode="numeric"
+                pattern="[0-9]*"
+                autocomplete="off"
                 dir="ltr"
-                maxlength="32"
-                placeholder="240123456789012345678901"
-                class="w-full pr-12 pl-14 py-3 rounded-xl input-glass text-white outline-none tracking-widest"
+                maxlength="10"
+                placeholder="0012345678"
+                class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none tracking-widest disabled:opacity-60"
               >
             </div>
-
-            <p class="text-xs text-gray-400 mt-2">
-              شماره شبا را بدون IR وارد کنید.
-            </p>
           </div>
 
-          <button
-            type="submit"
-            :disabled="isSavingBankInfo"
-            class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/20 hover:bg-white/10 transition-all font-medium disabled:opacity-60"
-          >
-            <Save class="w-4 h-4" />
-            {{ isSavingBankInfo ? 'در حال ثبت...' : 'ثبت شماره شبا' }}
-          </button>
-        </form>
-      </div>
-
-      <!-- Password -->
-      <div class="glass-card rounded-3xl p-6 sm:p-8">
-        <h2 class="text-lg font-bold mb-6">تغییر رمز عبور</h2>
-
-        <form class="space-y-5" @submit.prevent="savePassword">
           <div>
-            <label for="current-password" class="block text-sm text-gray-300 mb-2">رمز عبور فعلی</label>
+            <label class="block text-sm text-gray-300 mb-2">
+              تاریخ تولد
+            </label>
+
+            <DashboardDatePicker
+              v-model="birthDate"
+              placeholder="تاریخ تولد را انتخاب کنید"
+              :disabled="!canUpdate"
+            />
+          </div>
+        </div>
+
+        <button
+          v-if="canUpdate"
+          type="submit"
+          :disabled="isSavingIdentity"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/20 hover:bg-white/10 transition-all font-medium disabled:opacity-60"
+        >
+          <Save class="w-4 h-4" />
+          {{ isSavingIdentity ? 'در حال ثبت...' : 'ثبت اطلاعات هویتی' }}
+        </button>
+
+        <p v-else class="text-xs text-gray-500">
+          ویرایش اطلاعات برای حساب شما فعال نیست.
+        </p>
+      </form>
+    </div>
+
+    <!-- Bank Info -->
+    <div class="glass-card rounded-3xl p-6 sm:p-8">
+      <h2 class="text-lg font-bold mb-6">اطلاعات بانکی</h2>
+
+      <form class="space-y-5" @submit.prevent="saveBankInfo">
+        <div>
+          <label for="iban-number" class="block text-sm text-gray-300 mb-2">
+            شماره شبا
+          </label>
+
+          <div class="relative">
+            <CreditCard class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
+
+            <span class="absolute top-1/2 -translate-y-1/2 left-4 text-gray-400 font-medium">
+              IR
+            </span>
+
+            <input
+              id="iban-number"
+              :value="ibanNumber"
+              @input="onIbanInput"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="off"
+              dir="ltr"
+              maxlength="32"
+              placeholder="240123456789012345678901"
+              class="w-full pr-12 pl-14 py-3 rounded-xl input-glass text-white outline-none tracking-widest"
+            >
+          </div>
+
+          <p class="text-xs text-gray-400 mt-2">
+            شماره شبا را بدون IR وارد کنید (فقط عدد).
+          </p>
+        </div>
+
+        <button
+          type="submit"
+          :disabled="isSavingBankInfo"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/20 hover:bg-white/10 transition-all font-medium disabled:opacity-60"
+        >
+          <Save class="w-4 h-4" />
+          {{ isSavingBankInfo ? 'در حال ثبت...' : 'ثبت شماره شبا' }}
+        </button>
+      </form>
+    </div>
+
+    <!-- Password -->
+    <div class="glass-card rounded-3xl p-6 sm:p-8">
+      <h2 class="text-lg font-bold mb-6">تغییر رمز عبور</h2>
+
+      <form class="space-y-5" @submit.prevent="savePassword">
+        <div>
+          <label for="current-password" class="block text-sm text-gray-300 mb-2">رمز عبور فعلی</label>
+          <div class="relative">
+            <Lock class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
+            <input id="current-password" v-model="passwords.current" type="password" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
+          </div>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label for="new-password" class="block text-sm text-gray-300 mb-2">رمز عبور جدید</label>
             <div class="relative">
               <Lock class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-              <input id="current-password" v-model="passwords.current" type="password" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
+              <input id="new-password" v-model="passwords.next" type="password" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
             </div>
           </div>
-          <div class="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label for="new-password" class="block text-sm text-gray-300 mb-2">رمز عبور جدید</label>
-              <div class="relative">
-                <Lock class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-                <input id="new-password" v-model="passwords.next" type="password" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
-              </div>
-            </div>
-            <div>
-              <label for="confirm-password" class="block text-sm text-gray-300 mb-2">تکرار رمز جدید</label>
-              <div class="relative">
-                <Lock class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-                <input id="confirm-password" v-model="passwords.confirm" type="password" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
-              </div>
+          <div>
+            <label for="confirm-password" class="block text-sm text-gray-300 mb-2">تکرار رمز جدید</label>
+            <div class="relative">
+              <Lock class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
+              <input id="confirm-password" v-model="passwords.confirm" type="password" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
             </div>
           </div>
-
-          <button
-            type="submit"
-            :disabled="isSavingPassword"
-            class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/20 hover:bg-white/10 transition-all font-medium disabled:opacity-60"
-          >
-            <Save class="w-4 h-4" />
-            {{ isSavingPassword ? 'در حال ذخیره...' : 'تغییر رمز عبور' }}
-          </button>
-        </form>
-      </div>
-
-      <!-- Notifications -->
-      <div class="glass-card rounded-3xl p-6 sm:p-8">
-        <h2 class="text-lg font-bold mb-6">تنظیمات اعلان‌ها</h2>
-
-        <div class="space-y-4">
-          <label class="flex items-center justify-between gap-4 cursor-pointer">
-            <span class="text-sm text-gray-300">یادآوری تمدید سرویس‌ها</span>
-            <input v-model="notifications.renewalReminders" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
-          </label>
-          <label class="flex items-center justify-between gap-4 cursor-pointer">
-            <span class="text-sm text-gray-300">ایمیل صدور فاکتور</span>
-            <input v-model="notifications.invoiceEmails" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
-          </label>
-          <label class="flex items-center justify-between gap-4 cursor-pointer">
-            <span class="text-sm text-gray-300">اطلاع‌رسانی پاسخ تیکت‌ها</span>
-            <input v-model="notifications.ticketUpdates" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
-          </label>
-          <label class="flex items-center justify-between gap-4 cursor-pointer">
-            <span class="text-sm text-gray-300">ایمیل‌های تبلیغاتی و پیشنهادات ویژه</span>
-            <input v-model="notifications.marketing" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
-          </label>
         </div>
+
+        <button
+          type="submit"
+          :disabled="isSavingPassword"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/20 hover:bg-white/10 transition-all font-medium disabled:opacity-60"
+        >
+          <Save class="w-4 h-4" />
+          {{ isSavingPassword ? 'در حال ذخیره...' : 'تغییر رمز عبور' }}
+        </button>
+      </form>
+    </div>
+
+    <!-- Notifications -->
+    <div class="glass-card rounded-3xl p-6 sm:p-8">
+      <h2 class="text-lg font-bold mb-6">تنظیمات اعلان‌ها</h2>
+
+      <div class="space-y-4">
+        <label class="flex items-center justify-between gap-4 cursor-pointer">
+          <span class="text-sm text-gray-300">یادآوری تمدید سرویس‌ها</span>
+          <input v-model="notifications.renewalReminders" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
+        </label>
+        <label class="flex items-center justify-between gap-4 cursor-pointer">
+          <span class="text-sm text-gray-300">ایمیل صدور فاکتور</span>
+          <input v-model="notifications.invoiceEmails" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
+        </label>
+        <label class="flex items-center justify-between gap-4 cursor-pointer">
+          <span class="text-sm text-gray-300">اطلاع‌رسانی پاسخ تیکت‌ها</span>
+          <input v-model="notifications.ticketUpdates" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
+        </label>
+        <label class="flex items-center justify-between gap-4 cursor-pointer">
+          <span class="text-sm text-gray-300">ایمیل‌های تبلیغاتی و پیشنهادات ویژه</span>
+          <input v-model="notifications.marketing" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
+        </label>
       </div>
-    </template>
+    </div>
   </div>
 </template>
