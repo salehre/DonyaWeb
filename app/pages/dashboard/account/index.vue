@@ -14,6 +14,9 @@ useHead({
 
 const { user, setUser, fetchUser } = useUserInfo()
 
+// ---- وضعیت لودینگ اولیه صفحه ----
+const isLoading = ref(true)
+
 // ---- اطلاعات پروفایل (فقط نمایش؛ از users/userInfo → User) ----
 
 const u = computed(() => user.value || {})
@@ -24,6 +27,8 @@ onMounted(async () => {
     await fetchUser()
   } catch (err) {
     console.error('User info refresh error:', err, err?.data)
+  } finally {
+    isLoading.value = false
   }
 })
 
@@ -270,166 +275,239 @@ async function savePassword() {
 
 <template>
   <div class="max-w-3xl mx-auto space-y-6">
-    <!-- Profile -->
-    <div class="glass-card rounded-3xl p-6 sm:p-8">
-      <div class="flex items-center gap-4 mb-6">
-        <div
-          class="w-14 h-14 rounded-full bg-linear-to-br from-purple-500 to-blue-600 flex items-center justify-center text-lg font-bold shrink-0"
-        >
-          {{ avatarLetter }}
-        </div>
 
-        <div class="min-w-0">
-          <h2 class="text-lg font-bold truncate">{{ u.full_name || 'اطلاعات پروفایل' }}</h2>
-          <p class="text-xs text-gray-500">
-            <template v-if="u.id">
-              کد کاربری: <span dir="ltr">#{{ u.id }}</span>
-            </template>
-            <template v-if="statusLabel"> · وضعیت حساب: {{ statusLabel }}</template>
-          </p>
-        </div>
-      </div>
-
-      <div class="grid sm:grid-cols-2 gap-4">
-        <div
-          v-for="row in infoRows"
-          :key="row.label"
-          class="rounded-2xl bg-white/5 border border-white/10 px-4 py-3"
-        >
-          <p class="flex items-center gap-2 text-xs text-gray-400 mb-1">
-            <component :is="row.icon" class="w-4 h-4" />
-            {{ row.label }}
-          </p>
-
-          <div class="flex items-center justify-between gap-2">
-            <span
-              class="text-sm font-medium truncate"
-              :class="row.value ? 'text-white' : 'text-gray-500'"
-              :dir="row.ltr && row.value ? 'ltr' : undefined"
-            >
-              {{ row.value || 'ثبت نشده' }}
-            </span>
-
-            <span
-              v-if="row.verified !== null && row.verified !== undefined"
-              class="text-[11px] px-2 py-0.5 rounded-full border whitespace-nowrap"
-              :class="row.verified ? green : gray"
-            >
-              {{ row.verified ? 'تأیید شده' : 'تأیید نشده' }}
-            </span>
+    <!-- ===================== SKELETON ===================== -->
+    <template v-if="isLoading">
+      <!-- Profile Skeleton -->
+      <div class="glass-card rounded-3xl p-6 sm:p-8 animate-pulse">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-14 h-14 rounded-full bg-white/10 shrink-0"></div>
+          <div class="min-w-0 flex-1 space-y-2">
+            <div class="h-4 w-40 rounded bg-white/10"></div>
+            <div class="h-3 w-28 rounded bg-white/10"></div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Bank Info -->
-    <div class="glass-card rounded-3xl p-6 sm:p-8">
-      <h2 class="text-lg font-bold mb-6">اطلاعات بانکی</h2>
-
-      <form class="space-y-5" @submit.prevent="saveBankInfo">
-        <div>
-          <label for="iban-number" class="block text-sm text-gray-300 mb-2">
-            شماره شبا
-          </label>
-
-          <div class="relative">
-            <CreditCard class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-
-            <span class="absolute top-1/2 -translate-y-1/2 left-4 text-gray-400 font-medium">
-              IR
-            </span>
-
-            <input
-              id="iban-number"
-              :value="ibanNumber"
-              @input="onIbanInput"
-              type="text"
-              inputmode="numeric"
-              dir="ltr"
-              maxlength="32"
-              placeholder="240123456789012345678901"
-              class="w-full pr-12 pl-14 py-3 rounded-xl input-glass text-white outline-none tracking-widest"
-            >
-          </div>
-
-          <p class="text-xs text-gray-400 mt-2">
-            شماره شبا را بدون IR وارد کنید.
-          </p>
-        </div>
-
-        <button
-          type="submit"
-          :disabled="isSavingBankInfo"
-          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/20 hover:bg-white/10 transition-all font-medium disabled:opacity-60"
-        >
-          <Save class="w-4 h-4" />
-          {{ isSavingBankInfo ? 'در حال ثبت...' : 'ثبت شماره شبا' }}
-        </button>
-      </form>
-    </div>
-
-    <!-- Password -->
-    <div class="glass-card rounded-3xl p-6 sm:p-8">
-      <h2 class="text-lg font-bold mb-6">تغییر رمز عبور</h2>
-
-      <form class="space-y-5" @submit.prevent="savePassword">
-        <div>
-          <label for="current-password" class="block text-sm text-gray-300 mb-2">رمز عبور فعلی</label>
-          <div class="relative">
-            <Lock class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-            <input id="current-password" v-model="passwords.current" type="password" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
-          </div>
-        </div>
         <div class="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label for="new-password" class="block text-sm text-gray-300 mb-2">رمز عبور جدید</label>
-            <div class="relative">
-              <Lock class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-              <input id="new-password" v-model="passwords.next" type="password" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
-            </div>
+          <div
+            v-for="n in 7"
+            :key="n"
+            class="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 space-y-2"
+          >
+            <div class="h-3 w-20 rounded bg-white/10"></div>
+            <div class="h-4 w-32 rounded bg-white/10"></div>
           </div>
-          <div>
-            <label for="confirm-password" class="block text-sm text-gray-300 mb-2">تکرار رمز جدید</label>
-            <div class="relative">
-              <Lock class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-              <input id="confirm-password" v-model="passwords.confirm" type="password" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
+        </div>
+      </div>
+
+      <!-- Bank Info Skeleton -->
+      <div class="glass-card rounded-3xl p-6 sm:p-8 animate-pulse">
+        <div class="h-5 w-32 rounded bg-white/10 mb-6"></div>
+        <div class="space-y-3">
+          <div class="h-3 w-20 rounded bg-white/10"></div>
+          <div class="h-12 w-full rounded-xl bg-white/5 border border-white/10"></div>
+          <div class="h-3 w-48 rounded bg-white/10"></div>
+        </div>
+        <div class="h-11 w-40 rounded-xl bg-white/10 mt-5"></div>
+      </div>
+
+      <!-- Password Skeleton -->
+      <div class="glass-card rounded-3xl p-6 sm:p-8 animate-pulse">
+        <div class="h-5 w-32 rounded bg-white/10 mb-6"></div>
+        <div class="space-y-5">
+          <div class="space-y-2">
+            <div class="h-3 w-24 rounded bg-white/10"></div>
+            <div class="h-12 w-full rounded-xl bg-white/5 border border-white/10"></div>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <div class="h-3 w-24 rounded bg-white/10"></div>
+              <div class="h-12 w-full rounded-xl bg-white/5 border border-white/10"></div>
+            </div>
+            <div class="space-y-2">
+              <div class="h-3 w-24 rounded bg-white/10"></div>
+              <div class="h-12 w-full rounded-xl bg-white/5 border border-white/10"></div>
             </div>
           </div>
         </div>
-
-        <button
-          type="submit"
-          :disabled="isSavingPassword"
-          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/20 hover:bg-white/10 transition-all font-medium disabled:opacity-60"
-        >
-          <Save class="w-4 h-4" />
-          {{ isSavingPassword ? 'در حال ذخیره...' : 'تغییر رمز عبور' }}
-        </button>
-      </form>
-    </div>
-
-    <!-- Notifications -->
-    <div class="glass-card rounded-3xl p-6 sm:p-8">
-      <h2 class="text-lg font-bold mb-6">تنظیمات اعلان‌ها</h2>
-
-      <div class="space-y-4">
-        <label class="flex items-center justify-between gap-4 cursor-pointer">
-          <span class="text-sm text-gray-300">یادآوری تمدید سرویس‌ها</span>
-          <input v-model="notifications.renewalReminders" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
-        </label>
-        <label class="flex items-center justify-between gap-4 cursor-pointer">
-          <span class="text-sm text-gray-300">ایمیل صدور فاکتور</span>
-          <input v-model="notifications.invoiceEmails" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
-        </label>
-        <label class="flex items-center justify-between gap-4 cursor-pointer">
-          <span class="text-sm text-gray-300">اطلاع‌رسانی پاسخ تیکت‌ها</span>
-          <input v-model="notifications.ticketUpdates" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
-        </label>
-        <label class="flex items-center justify-between gap-4 cursor-pointer">
-          <span class="text-sm text-gray-300">ایمیل‌های تبلیغاتی و پیشنهادات ویژه</span>
-          <input v-model="notifications.marketing" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
-        </label>
+        <div class="h-11 w-40 rounded-xl bg-white/10 mt-5"></div>
       </div>
-    </div>
+
+      <!-- Notifications Skeleton -->
+      <div class="glass-card rounded-3xl p-6 sm:p-8 animate-pulse">
+        <div class="h-5 w-36 rounded bg-white/10 mb-6"></div>
+        <div class="space-y-4">
+          <div v-for="n in 4" :key="n" class="flex items-center justify-between gap-4">
+            <div class="h-3 w-48 rounded bg-white/10"></div>
+            <div class="w-5 h-5 rounded bg-white/10"></div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ===================== CONTENT ===================== -->
+    <template v-else>
+      <!-- Profile -->
+      <div class="glass-card rounded-3xl p-6 sm:p-8">
+        <div class="flex items-center gap-4 mb-6">
+          <div
+            class="w-14 h-14 rounded-full bg-linear-to-br from-purple-500 to-blue-600 flex items-center justify-center text-lg font-bold shrink-0"
+          >
+            {{ avatarLetter }}
+          </div>
+
+          <div class="min-w-0">
+            <h2 class="text-lg font-bold truncate">{{ u.full_name || 'اطلاعات پروفایل' }}</h2>
+            <p class="text-xs text-gray-500">
+              <template v-if="u.id">
+                کد کاربری: <span dir="ltr">#{{ u.id }}</span>
+              </template>
+              <template v-if="statusLabel"> · وضعیت حساب: {{ statusLabel }}</template>
+            </p>
+          </div>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div
+            v-for="row in infoRows"
+            :key="row.label"
+            class="rounded-2xl bg-white/5 border border-white/10 px-4 py-3"
+          >
+            <p class="flex items-center gap-2 text-xs text-gray-400 mb-1">
+              <component :is="row.icon" class="w-4 h-4" />
+              {{ row.label }}
+            </p>
+
+            <div class="flex items-center justify-between gap-2">
+              <span
+                class="text-sm font-medium truncate"
+                :class="row.value ? 'text-white' : 'text-gray-500'"
+                :dir="row.ltr && row.value ? 'ltr' : undefined"
+              >
+                {{ row.value || 'ثبت نشده' }}
+              </span>
+
+              <span
+                v-if="row.verified !== null && row.verified !== undefined"
+                class="text-[11px] px-2 py-0.5 rounded-full border whitespace-nowrap"
+                :class="row.verified ? green : gray"
+              >
+                {{ row.verified ? 'تأیید شده' : 'تأیید نشده' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bank Info -->
+      <div class="glass-card rounded-3xl p-6 sm:p-8">
+        <h2 class="text-lg font-bold mb-6">اطلاعات بانکی</h2>
+
+        <form class="space-y-5" @submit.prevent="saveBankInfo">
+          <div>
+            <label for="iban-number" class="block text-sm text-gray-300 mb-2">
+              شماره شبا
+            </label>
+
+            <div class="relative">
+              <CreditCard class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
+
+              <span class="absolute top-1/2 -translate-y-1/2 left-4 text-gray-400 font-medium">
+                IR
+              </span>
+
+              <input
+                id="iban-number"
+                :value="ibanNumber"
+                @input="onIbanInput"
+                type="text"
+                inputmode="numeric"
+                dir="ltr"
+                maxlength="32"
+                placeholder="240123456789012345678901"
+                class="w-full pr-12 pl-14 py-3 rounded-xl input-glass text-white outline-none tracking-widest"
+              >
+            </div>
+
+            <p class="text-xs text-gray-400 mt-2">
+              شماره شبا را بدون IR وارد کنید.
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            :disabled="isSavingBankInfo"
+            class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/20 hover:bg-white/10 transition-all font-medium disabled:opacity-60"
+          >
+            <Save class="w-4 h-4" />
+            {{ isSavingBankInfo ? 'در حال ثبت...' : 'ثبت شماره شبا' }}
+          </button>
+        </form>
+      </div>
+
+      <!-- Password -->
+      <div class="glass-card rounded-3xl p-6 sm:p-8">
+        <h2 class="text-lg font-bold mb-6">تغییر رمز عبور</h2>
+
+        <form class="space-y-5" @submit.prevent="savePassword">
+          <div>
+            <label for="current-password" class="block text-sm text-gray-300 mb-2">رمز عبور فعلی</label>
+            <div class="relative">
+              <Lock class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
+              <input id="current-password" v-model="passwords.current" type="password" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
+            </div>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label for="new-password" class="block text-sm text-gray-300 mb-2">رمز عبور جدید</label>
+              <div class="relative">
+                <Lock class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
+                <input id="new-password" v-model="passwords.next" type="password" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
+              </div>
+            </div>
+            <div>
+              <label for="confirm-password" class="block text-sm text-gray-300 mb-2">تکرار رمز جدید</label>
+              <div class="relative">
+                <Lock class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
+                <input id="confirm-password" v-model="passwords.confirm" type="password" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            :disabled="isSavingPassword"
+            class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/20 hover:bg-white/10 transition-all font-medium disabled:opacity-60"
+          >
+            <Save class="w-4 h-4" />
+            {{ isSavingPassword ? 'در حال ذخیره...' : 'تغییر رمز عبور' }}
+          </button>
+        </form>
+      </div>
+
+      <!-- Notifications -->
+      <div class="glass-card rounded-3xl p-6 sm:p-8">
+        <h2 class="text-lg font-bold mb-6">تنظیمات اعلان‌ها</h2>
+
+        <div class="space-y-4">
+          <label class="flex items-center justify-between gap-4 cursor-pointer">
+            <span class="text-sm text-gray-300">یادآوری تمدید سرویس‌ها</span>
+            <input v-model="notifications.renewalReminders" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
+          </label>
+          <label class="flex items-center justify-between gap-4 cursor-pointer">
+            <span class="text-sm text-gray-300">ایمیل صدور فاکتور</span>
+            <input v-model="notifications.invoiceEmails" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
+          </label>
+          <label class="flex items-center justify-between gap-4 cursor-pointer">
+            <span class="text-sm text-gray-300">اطلاع‌رسانی پاسخ تیکت‌ها</span>
+            <input v-model="notifications.ticketUpdates" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
+          </label>
+          <label class="flex items-center justify-between gap-4 cursor-pointer">
+            <span class="text-sm text-gray-300">ایمیل‌های تبلیغاتی و پیشنهادات ویژه</span>
+            <input v-model="notifications.marketing" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
+          </label>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
