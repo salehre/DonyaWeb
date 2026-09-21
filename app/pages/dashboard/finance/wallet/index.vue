@@ -246,7 +246,7 @@ function isValidSheba(sheba) {
         </div>
       </div>
 
-      <div
+      <!-- <div
         v-if="!hasSavedIban"
         class="relative mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200"
       >
@@ -258,7 +258,7 @@ function isValidSheba(sheba) {
         >
           ثبت شماره شبا
         </NuxtLink>
-      </div>
+      </div> -->
     </div>
 
     <!-- فرم درخواست برداشت -->
@@ -492,18 +492,18 @@ function isValidSheba(sheba) {
         <!-- دسترسی سریع -->
         <div class="glass-card rounded-3xl p-5 space-y-3">
           <h3 class="font-bold mb-1">دسترسی سریع</h3>
-          <NuxtLink to="/dashboard/invoices" class="flex items-center gap-3 rounded-xl p-3 hover:bg-white/5 transition-colors">
+          <NuxtLink to="/dashboard/purchaserecords" class="flex items-center gap-3 rounded-xl p-3 hover:bg-white/5 transition-colors">
             <div class="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
               <FileText class="w-4 h-4 text-purple-400" />
             </div>
             <span class="text-sm">فاکتورهای پرداخت‌نشده</span>
           </NuxtLink>
-          <NuxtLink to="/dashboard/finance/gift-card" class="flex items-center gap-3 rounded-xl p-3 hover:bg-white/5 transition-colors">
+          <!-- <NuxtLink to="/dashboard/finance/gift-card" class="flex items-center gap-3 rounded-xl p-3 hover:bg-white/5 transition-colors">
             <div class="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
               <Gift class="w-4 h-4 text-amber-400" />
             </div>
             <span class="text-sm">فعال‌سازی کارت هدیه</span>
-          </NuxtLink>
+          </NuxtLink> -->
         </div>
 
         <!-- اطلاعات حساب -->

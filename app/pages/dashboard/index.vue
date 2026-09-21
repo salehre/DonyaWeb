@@ -15,37 +15,88 @@ const headers = useApiHeaders();
 const tickets = ref([])
 const pending = ref(true)
 const error = ref(null)
+const stats = reactive({
+  activeServices: 0,
+  expiringServices: 0,
+  pendingInvoices: 0,
+  openTickets: 0,
+})
+const expiringServices = ref([])
+
+function getListFromResponse(response) {
+  if (Array.isArray(response)) return response
+  if (Array.isArray(response?.Tickets)) return response.Tickets
+  if (Array.isArray(response?.tickets)) return response.tickets
+  if (Array.isArray(response?.Invoices)) return response.Invoices
+  if (Array.isArray(response?.invoices)) return response.invoices
+  if (Array.isArray(response?.data)) return response.data
+  return []
+}
+
+function isOpenTicket(item) {
+  const status = String(item?.status ?? item?.status_text ?? '').trim().toLowerCase()
+  const statusId = Number(item?.status ?? item?.status_id)
+
+  return statusId === 1 || status === 'open' || status.includes('open') || status === 'باز' || status.includes('باز')
+}
+
+function isPendingInvoice(item) {
+  const status = Number(item?.status ?? item?.status_id ?? 0)
+  const statusText = String(item?.status_text ?? '').trim().toLowerCase()
+
+  return [2, 3, 4, 5, 8].includes(status)
+    || statusText.includes('pending')
+    || statusText.includes('await')
+    || statusText.includes('در حال')
+    || statusText.includes('انتظار')
+}
 
 onMounted(async () => {
   try {
-    const result = await $fetch(`${config.public.apiBase}/tickets/indexByUserId`, {
-      method: 'POST',
-      headers: headers.value,
-      body: {
-        status: '1,2,3,4,5,6',
-      },
-    })
+    const [ticketResult, invoiceResult] = await Promise.all([
+      $fetch(`${config.public.apiBase}/tickets/indexByUserId`, {
+        method: 'POST',
+        headers: headers.value,
+        body: {
+          status: '1,2,3,4,5,6',
+        },
+      }),
+      $fetch(`${config.public.apiBase}/invoices/indexByUser`, {
+        method: 'POST',
+        headers: headers.value,
+        body: {
+          conditions: { status: [2, 3, 4, 5, 8] },
+        },
+      }),
+    ])
 
-    tickets.value = result && (result.Tickets || result.tickets) ? (result.Tickets || result.tickets) : []
+    const ticketList = getListFromResponse(ticketResult)
+    const invoiceList = getListFromResponse(invoiceResult)
+
+    tickets.value = ticketList
+    stats.openTickets = ticketList.filter(isOpenTicket).length
+    stats.pendingInvoices = invoiceList.filter(isPendingInvoice).length
+    stats.activeServices = 0
+    stats.expiringServices = 0
   } catch (err) {
     error.value = err
-    console.error('Dashboard tickets fetch error:', err)
+    console.error('Dashboard stats fetch error:', err)
+    stats.activeServices = 0
+    stats.expiringServices = 0
+    stats.pendingInvoices = 0
+    stats.openTickets = 0
   } finally {
     pending.value = false
   }
 })
 
-const { stats, getExpiringServices } = useDashboard()
-
-const expiringServices = getExpiringServices()
-// const recentTickets = getRecentTickets()
 const recentTickets = computed(() =>
   tickets.value
     .slice()
     .sort(
       (a, b) =>
-        new Date(b.updated_at).getTime() -
-        new Date(a.updated_at).getTime()
+        new Date(b.updated_at ?? b.created_at ?? 0).getTime() -
+        new Date(a.updated_at ?? a.created_at ?? 0).getTime()
     )
     .slice(0, 5)
 )
@@ -56,7 +107,7 @@ const recentTickets = computed(() =>
     <!-- Welcome -->
     <div class="glass-card rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
       <div>
-        <h2 class="text-xl sm:text-2xl font-bold mb-1">سلام {{ user?.full_name?.split(' ')[0] || user?.first_name || '' }}، خوش برگشتی 👋</h2>
+        <h2 class="text-xl sm:text-2xl font-bold mb-1">سلام {{ user?.full_name?.split(' ')[0] || user?.first_name || '' }}، خوش برگشتی </h2>
         <p class="text-gray-400 text-sm">خلاصه‌ای از وضعیت سرویس‌ها و حساب کاربری‌ات</p>
       </div>
 <!--      <NuxtLink-->

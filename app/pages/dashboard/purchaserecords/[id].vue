@@ -338,6 +338,7 @@ const isAllReturned = computed(() => {
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ Invoice.status_text?.includes('return') ? 'تعداد مرجوعی' : t('quantity') }}</th>
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ t('price') }}</th>
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ t('discount') }}</th>
+              <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ t('tax') }}</th>
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ Invoice.status_text?.includes('return') ? 'مبلغ قابل استرداد' : t('total_price') }}</th>
             </tr>
           </thead>
@@ -351,6 +352,7 @@ const isAllReturned = computed(() => {
                 <td class="px-2 py-2.5 text-center">{{ item.amount }}</td>
                 <td class="px-2 py-2.5 text-center">{{ numberWithSeparator(item.unit_price) }}</td>
                 <td class="px-2 py-2.5 text-center">{{ numberWithSeparator(item.discount_price) }}</td>
+                <td class="px-2 py-2.5 text-center">{{ numberWithSeparator(item.tax_price) }}</td>
                 <td class="px-2 py-2.5 text-center">{{ numberWithSeparator(item.total_price) }}</td>
               </tr>
               <tr v-if="Invoice.status_text?.includes('return') && item.description" class="border-b border-white/5 bg-purple-500/5">
@@ -411,6 +413,10 @@ const isAllReturned = computed(() => {
               <p>کد تخفیف :</p>
               <strong class="text-white">{{ numberWithSeparator(Invoice.other_price ?? 0) }} {{ t(Invoice.currency_symbol) }}</strong>
             </div>
+              <div class="flex justify-between px-1">
+              <p>عوارض و مالیات :</p>
+              <strong class="text-white">{{ numberWithSeparator(Invoice.tax_price ?? 0) }} {{ t(Invoice.currency_symbol) }}</strong>
+            </div>
           </template>
           <div class="flex justify-between px-1">
             <p>{{ Invoice.status_text?.includes('return') ? 'مبلغ کل قابل استرداد' : t('total_price') }} :</p>
@@ -432,7 +438,7 @@ const isAllReturned = computed(() => {
               <th class="px-4 py-3 font-medium">تاریخ سررسید</th>
               <th class="px-4 py-3 font-medium">مبلغ</th>
               <th class="px-4 py-3 font-medium">وضعیت</th>
-              <th class="px-4 py-3 font-medium text-center">پرداخت</th>
+              <!-- <th class="px-4 py-3 font-medium text-center">پرداخت</th> -->
             </tr>
           </thead>
           <tbody>
@@ -443,17 +449,6 @@ const isAllReturned = computed(() => {
               <td class="px-4 py-3 text-gray-200">{{ numberWithSeparator(parseInt(item.amount)) }} {{ item.currency_name }}</td>
               <td class="px-4 py-3">
                 <span class="rounded-full px-2.5 py-0.5 text-xs font-medium border" :class="getStatusBadgeClass(item.status)">{{ t(item.status_text) }}</span>
-              </td>
-              <td class="px-4 py-3 text-center">
-                <button
-                  v-if="item.kind === 8 && (item.status === 1 || item.status === 3)"
-                  type="button"
-                  :disabled="btnLoadingPayment"
-                  class="rounded-lg bg-indigo-500/10 border border-indigo-500/30 px-3 py-1.5 text-xs font-semibold text-indigo-300 disabled:opacity-60"
-                  @click="goPayment(item.wallet_transactions_id)"
-                >
-                  پرداخت
-                </button>
               </td>
             </tr>
           </tbody>

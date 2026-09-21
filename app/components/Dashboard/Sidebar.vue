@@ -3,7 +3,7 @@ import { reactive, watch } from 'vue'
 import {
   Home, ShoppingCart, Settings, Server, Globe, Cpu, Network, Wallet, FileText,
   CreditCard, Gift, LifeBuoy, Users, Repeat, ChevronDown, LogOut, X,
-  FileTextIcon
+  FileTextIcon, LayoutDashboard
 } from 'lucide-vue-next'
 
 const sidebarOpen = useState('dashboardSidebarOpen', () => false)
@@ -15,7 +15,7 @@ const { clearUser } = useUserInfo()
 const tokenCookie = useCookie("donyaweb_auth_token");
 
 const navItems = [
-  { type: 'link', label: 'صفحه کاربری', to: '/dashboard', icon: Home },
+  { type: 'link', label: 'صفحه کاربری', to: '/dashboard', icon: LayoutDashboard },
   { type: 'link', label: 'خرید جدید', to: '/start', icon: ShoppingCart },
   { type: 'link', label: 'همه سرویس‌ها', to: { path: '/dashboard/services', query: {} }, icon: Settings },
   // {
@@ -58,7 +58,7 @@ const navItems = [
     icon: Wallet,
     children: [
       { type: 'link', label: 'کیف پول', to: '/dashboard/finance/wallet', icon: Wallet },
-      { type: 'link', label: 'فهرست خرید', to: '/dashboard/invoices', icon: FileText },
+      // { type: 'link', label: 'فهرست خرید', to: '/dashboard/invoices', icon: FileText },
       { type: 'link', label: 'فاکتورها', to: '/dashboard/purchaserecords', icon: FileTextIcon }
       // { type: 'link', label: 'کارت هدیه', to: '/dashboard/finance/gift-card', icon: Gift },
     ]

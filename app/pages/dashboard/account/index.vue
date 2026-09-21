@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { User, AtSign, Phone, Lock, Save, CreditCard, Hash, Calendar } from 'lucide-vue-next'
-import DashboardDatePicker from '~/components/Dashboard/DatePicker.vue'
+import { User, AtSign, Phone, Lock, Save, CreditCard, Hash, Calendar, Check } from 'lucide-vue-next'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -66,7 +65,6 @@ const green = 'bg-green-500/10 text-green-400 border-green-500/30'
 const gray = 'bg-gray-500/10 text-gray-400 border-gray-500/30'
 
 const statusLabels = { active: 'فعال' }
-const genderLabels = { woman: 'زن', man: 'مرد' }
 
 function isTrue(value) {
   return value === true || value === 1 || value === '1'
@@ -102,10 +100,9 @@ const avatarLetter = computed(() => u.value.first_name?.charAt(0) || u.value.ful
 
 const statusLabel = computed(() => statusLabels[u.value.status_text] ?? u.value.status_text ?? '')
 
-// فیلدهای فقط‌نمایشی (کد ملی و تاریخ تولد پایین‌تر در فرم قابل ویرایش هستند)
+// فیلدهای فقط‌نمایشی (کد ملی، تاریخ تولد و جنسیت پایین‌تر در فرم قابل ویرایش هستند)
 const infoRows = computed(() => {
   const data = u.value
-  const gender = genderLabels[data.gender_text]
 
   const rows = [
     { label: 'نام', value: data.first_name, icon: User },
@@ -114,16 +111,12 @@ const infoRows = computed(() => {
     { label: 'ایمیل', value: data.email, icon: AtSign, ltr: true, verified: data.email ? isTrue(data.verified_email) : null }
   ]
 
-  if (gender) {
-    rows.push({ label: 'جنسیت', value: gender, icon: User })
-  }
-
   rows.push({ label: 'تاریخ عضویت', value: formatDateTime(data.register_date), icon: Calendar })
 
   return rows
 })
 
-// ---- اطلاعات هویتی: کد ملی و تاریخ تولد (قابل ویرایش) ----
+// ---- اطلاعات هویتی: کد ملی، تاریخ تولد و جنسیت (قابل ویرایش) ----
 
 function normalizeNationalCode(value) {
   return toEnglishDigits(value).replace(/\D/g, '').slice(0, 10)
@@ -152,12 +145,29 @@ const nationalCode = ref(normalizeNationalCode(user.value?.national_code))
 const birthDate = ref(String(user.value?.birth_date ?? '').slice(0, 10))
 const isSavingIdentity = ref(false)
 
+// جنسیت: مقدار عددی در API (gender). ۰ = زن (طبق نمونه‌ی userInfo: gender 0 ↔ gender_text 'woman')
+// و ۱ = مرد (فرض؛ باید با بک‌اند چک شود). value ها رشته‌اند چون StartCustomSelect مقدار String می‌گیرد.
+const genderOptions = [
+  { value: '0', label: 'زن' },
+  { value: '1', label: 'مرد' }
+]
+
+function genderValueFrom(data) {
+  if (data?.gender_text === 'woman') return '0'
+  if (data?.gender_text === 'man') return '1'
+  const numeric = String(data?.gender ?? '')
+  return genderOptions.some((o) => o.value === numeric) ? numeric : ''
+}
+
+const gender = ref(genderValueFrom(user.value))
+
 // وقتی اطلاعات تازه از API رسید، فرم هم به‌روز می‌شود
 watch(
-  [() => u.value.national_code, () => u.value.birth_date],
+  [() => u.value.national_code, () => u.value.birth_date, () => u.value.gender_text, () => u.value.gender],
   ([code, birth]) => {
     nationalCode.value = normalizeNationalCode(code)
     birthDate.value = String(birth ?? '').slice(0, 10)
+    gender.value = genderValueFrom(u.value)
   }
 )
 
@@ -189,8 +199,13 @@ async function saveIdentity() {
     payload.birth_date = birthDate.value
   }
 
+  // جنسیت فقط وقتی عوض شده ارسال می‌شود (تا مقدار پیش‌فرض API بی‌دلیل ثبت نشود)
+  if (gender.value !== '' && gender.value !== genderValueFrom(u.value)) {
+    payload.gender = Number(gender.value)
+  }
+
   if (!Object.keys(payload).length) {
-    toast.info('کد ملی یا تاریخ تولد را وارد کنید')
+    toast.info('اطلاعاتی برای ثبت وارد نشده است')
     return
   }
 
@@ -211,7 +226,11 @@ async function saveIdentity() {
         await fetchUser()
       } catch (refreshError) {
         console.error('User info refresh error:', refreshError)
-        setUser({ ...(user.value || {}), ...payload })
+        setUser({
+          ...(user.value || {}),
+          ...payload,
+          ...(payload.gender !== undefined ? { gender_text: payload.gender === 1 ? 'man' : 'woman' } : {})
+        })
       }
     } else {
       console.error('users/update response:', response)
@@ -246,6 +265,13 @@ const notifications = ref({
   ticketUpdates: true,
   marketing: false
 })
+
+const notificationOptions = [
+  { key: 'renewalReminders', label: 'یادآوری تمدید سرویس‌ها' },
+  { key: 'invoiceEmails', label: 'ایمیل صدور فاکتور' },
+  { key: 'ticketUpdates', label: 'اطلاع‌رسانی پاسخ تیکت‌ها' },
+  { key: 'marketing', label: 'ایمیل‌های تبلیغاتی و پیشنهادات ویژه' }
+]
 
 const isSavingPassword = ref(false)
 
@@ -486,6 +512,20 @@ async function savePassword() {
               :disabled="!canUpdate"
             />
           </div>
+
+          <div>
+            <label class="block text-sm text-gray-300 mb-2">
+              جنسیت
+            </label>
+
+            <div :class="canUpdate ? '' : 'pointer-events-none opacity-60'">
+              <StartCustomSelect
+                v-model="gender"
+                :options="genderOptions"
+                placeholder="انتخاب جنسیت"
+              />
+            </div>
+          </div>
         </div>
 
         <button
@@ -505,7 +545,7 @@ async function savePassword() {
     </div>
 
     <!-- Bank Info -->
-    <div class="glass-card rounded-3xl p-6 sm:p-8">
+    <!-- <div class="glass-card rounded-3xl p-6 sm:p-8">
       <h2 class="text-lg font-bold mb-6">اطلاعات بانکی</h2>
 
       <form class="space-y-5" @submit.prevent="saveBankInfo">
@@ -550,7 +590,7 @@ async function savePassword() {
           {{ isSavingBankInfo ? 'در حال ثبت...' : 'ثبت شماره شبا' }}
         </button>
       </form>
-    </div>
+    </div> -->
 
     <!-- Password -->
     <div class="glass-card rounded-3xl p-6 sm:p-8">
@@ -597,21 +637,29 @@ async function savePassword() {
       <h2 class="text-lg font-bold mb-6">تنظیمات اعلان‌ها</h2>
 
       <div class="space-y-4">
-        <label class="flex items-center justify-between gap-4 cursor-pointer">
-          <span class="text-sm text-gray-300">یادآوری تمدید سرویس‌ها</span>
-          <input v-model="notifications.renewalReminders" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
-        </label>
-        <label class="flex items-center justify-between gap-4 cursor-pointer">
-          <span class="text-sm text-gray-300">ایمیل صدور فاکتور</span>
-          <input v-model="notifications.invoiceEmails" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
-        </label>
-        <label class="flex items-center justify-between gap-4 cursor-pointer">
-          <span class="text-sm text-gray-300">اطلاع‌رسانی پاسخ تیکت‌ها</span>
-          <input v-model="notifications.ticketUpdates" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
-        </label>
-        <label class="flex items-center justify-between gap-4 cursor-pointer">
-          <span class="text-sm text-gray-300">ایمیل‌های تبلیغاتی و پیشنهادات ویژه</span>
-          <input v-model="notifications.marketing" type="checkbox" class="w-5 h-5 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0">
+        <label
+          v-for="option in notificationOptions"
+          :key="option.key"
+          class="flex items-center justify-between gap-4 cursor-pointer select-none"
+        >
+          <span class="text-sm text-gray-300">{{ option.label }}</span>
+
+          <!-- چک‌باکس کاستوم: input واقعی مخفی است (برای کیبورد/دسترسی‌پذیری) و ظاهر با peer ساخته می‌شود -->
+          <span class="relative inline-flex w-6 h-6 shrink-0">
+            <input
+              v-model="notifications[option.key]"
+              type="checkbox"
+              class="peer sr-only"
+            >
+
+            <span
+              class="absolute inset-0 rounded-lg border border-white/20 bg-white/10 transition-all duration-200 hover:border-purple-400/60 peer-checked:border-transparent peer-checked:bg-linear-to-br peer-checked:from-purple-600 peer-checked:to-blue-600 peer-checked:shadow-lg peer-checked:shadow-purple-500/30 peer-focus-visible:ring-4 peer-focus-visible:ring-purple-500/30"
+            />
+
+            <Check
+              class="absolute inset-0 m-auto w-4 h-4 text-white pointer-events-none scale-50 opacity-0 transition-all duration-200 peer-checked:scale-100 peer-checked:opacity-100"
+            />
+          </span>
         </label>
       </div>
     </div>

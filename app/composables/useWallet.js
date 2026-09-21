@@ -55,7 +55,7 @@ export function useWallet(currencyId = 1) {
   )
 
   function formatNumber(n) {
-    return Math.abs(Number(n) || 0).toLocaleString('fa-IR')
+    return (Number(n) || 0).toLocaleString('fa-IR')
   }
 
   // دریافت موجودی از API — با force=true دوباره از سرور می‌گیرد، در غیر این‌صورت
