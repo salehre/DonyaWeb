@@ -17,7 +17,7 @@ const {
   transactions: history,
   transactionsPending,
   ensureLoaded,
-  refresh,
+  depositViaGateway,
   formatNumber
 } = useWallet()
 
@@ -51,16 +51,20 @@ async function handleTopup() {
     return
   }
 
+  if (method.value !== 'gateway') {
+    toast.error('در حال حاضر فقط پرداخت از طریق درگاه بانکی پشتیبانی می‌شود.')
+    return
+  }
+
   isSubmitting.value = true
-  // TODO: اتصال به درگاه پرداخت واقعی (زرین‌پال / کارت بانکی)
-  await new Promise((resolve) => setTimeout(resolve, 900))
-
-  // بعد از تکمیل پرداخت، موجودی و تاریخچه از سرور دوباره خوانده می‌شود
-  await refresh()
-
-  isSubmitting.value = false
-  toast.success(`مبلغ ${formatNumber(finalAmount)} تومان با موفقیت به کیف پول اضافه شد.`)
-  customAmount.value = ''
+  try {
+    const paymentUrl = await depositViaGateway(finalAmount)
+    // کاربر به درگاه بانک هدایت می‌شود؛ isSubmitting عمداً true می‌ماند تا دکمه دوباره کلیک نشود
+    window.location.replace(paymentUrl)
+  } catch (error) {
+    toast.error(error.message || 'خطا در اتصال به درگاه پرداخت')
+    isSubmitting.value = false
+  }
 }
 </script>
 
@@ -126,7 +130,7 @@ async function handleTopup() {
             @click="method = 'gateway'"
           >
             <Landmark class="w-4 h-4" />
-            درگاه زرین‌پال
+            درگاه جیبیت
           </button>
           <button
             type="button"

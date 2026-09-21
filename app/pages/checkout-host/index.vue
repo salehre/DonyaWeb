@@ -19,19 +19,19 @@ const { addItem: addToCartItem } = useCart()
 const plans = {
   basic: {
     name: 'هاست پایه',
-    monthlyPrice: '290000',
+    monthlyPrice: '449000',
     desc: 'مناسب برای سایت‌های شخصی',
     features: ['۱۰ GB فضای NVMe', 'پهنای باند نامحدود', '۲ دیتابیس', 'SSL رایگان', '۲ ایمیل اختصاصی']
   },
   pro: {
     name: 'هاست حرفه‌ای',
-    monthlyPrice: '590000',
+    monthlyPrice: '589000',
     desc: 'مناسب برای فروشگاه‌های آنلاین',
     features: ['۵۰ GB فضای NVMe', 'پهنای باند نامحدود', '۵ دیتابیس', 'بک‌آپ روزانه', 'پشتیبانی اولویت‌دار', '۱۰ ایمیل اختصاصی']
   },
   business: {
     name: 'هاست سازمانی',
-    monthlyPrice: '1390000',
+    monthlyPrice: '1099000',
     desc: 'مناسب برای سازمان‌های بزرگ',
     features: ['۲۰۰ GB فضای NVMe', 'منابع اختصاصی', '۱۰ دیتابیس', 'LiteSpeed Enterprise', 'پشتیبانی تلفنی', '۵۰ ایمیل اختصاصی']
   }

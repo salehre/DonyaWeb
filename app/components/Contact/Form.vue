@@ -147,20 +147,20 @@ async function handleSubmit() {
           </ul>
         </div>
 
-        <div class="glass-card rounded-3xl p-8">
+        <!-- <div class="glass-card rounded-3xl p-8">
           <h3 class="text-lg font-bold mb-4">ما را دنبال کنید</h3>
           <div class="flex gap-4">
-            <!-- <a href="#" class="w-11 h-11 rounded-full glass flex items-center justify-center hover:bg-white/20 transition-all">
+            <a href="#" class="w-11 h-11 rounded-full glass flex items-center justify-center hover:bg-white/20 transition-all">
               <Instagram class="w-5 h-5" />
             </a>
             <a href="#" class="w-11 h-11 rounded-full glass flex items-center justify-center hover:bg-white/20 transition-all">
               <Twitter class="w-5 h-5" />
-            </a> -->
+            </a>
             <a href="https://www.linkedin.com/company/sinatech-dm/" target="_blank" class="w-11 h-11 rounded-full glass flex items-center justify-center hover:bg-white/20 transition-all">
               <Linkedin class="w-5 h-5" />
             </a>
           </div>
-        </div>
+        </div> -->
 
         <div class="glass-card rounded-3xl p-8">
           <h3 class="text-lg font-bold mb-2">دفتر مرکزی</h3>

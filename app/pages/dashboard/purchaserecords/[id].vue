@@ -335,8 +335,8 @@ const isAllReturned = computed(() => {
           <thead>
             <tr class="border-b border-white/10 text-gray-400">
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ t('product_title') }}</th>
-              <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ Invoice.status_text?.includes('return') ? 'تعداد مرجوعی' : t('quantity') }}</th>
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ t('price') }}</th>
+              <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ Invoice.status_text?.includes('return') ? 'تعداد مرجوعی' : t('quantity') }}</th>
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ t('discount') }}</th>
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ t('tax') }}</th>
               <th class="whitespace-nowrap px-2 py-2.5 text-center font-medium">{{ Invoice.status_text?.includes('return') ? 'مبلغ قابل استرداد' : t('total_price') }}</th>
@@ -345,13 +345,18 @@ const isAllReturned = computed(() => {
           <tbody>
             <template v-for="(item, i) in Invoice.invoice_details" :key="i">
               <tr class="border-b border-white/5">
-                <td class="whitespace-nowrap px-2 py-2.5 text-center">
-                  {{ item.price_kind === 0 ? 'خرید' : item.price_kind === 1 ? 'تمدید' : 'تجدید' }}
-                  {{ item.products['title_' + language] }}
+                <td class="px-2 py-2.5 text-center">
+                  <div class="whitespace-nowrap">
+                    {{ item.price_kind === 0 ? 'خرید' : item.price_kind === 1 ? 'تمدید' : 'تجدید' }}
+                    {{ item.products['title_' + language] }}
+                  </div>
+                  <div v-if="item.description" class="mt-1 text-xs text-gray-500">
+                    {{ item.description }}
+                  </div>
                 </td>
-                <td class="px-2 py-2.5 text-center">{{ item.amount }}</td>
                 <td class="px-2 py-2.5 text-center">{{ numberWithSeparator(item.unit_price) }}</td>
-                <td class="px-2 py-2.5 text-center">{{ numberWithSeparator(item.discount_price) }}</td>
+                <td class="px-2 py-2.5 text-center">{{ item.amount }}</td>
+                <td class="px-2 py-2.5 text-center">{{ numberWithSeparator(Number(item.discount_price || 0) * Number(item.amount || 0)) }}</td>
                 <td class="px-2 py-2.5 text-center">{{ numberWithSeparator(item.tax_price) }}</td>
                 <td class="px-2 py-2.5 text-center">{{ numberWithSeparator(item.total_price) }}</td>
               </tr>

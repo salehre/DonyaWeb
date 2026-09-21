@@ -1,7 +1,7 @@
 <script setup>
 const stats = [
   { value: '۱۶+', label: 'سال تجربه', color: 'text-purple-400' },
-  { value: '۱۵۰۰۰+', label: 'مشتری فعال', color: 'text-blue-400' },
+  { value: '۱۵۰۰+', label: 'مشتری فعال', color: 'text-blue-400' },
   { value: '۴۰+', label: 'اعضای تیم فنی', color: 'text-pink-400' },
   { value: '۹۹.۹۹٪', label: 'میانگین آپتایم', color: 'text-green-400' }
 ]

@@ -43,7 +43,7 @@ const statCards = computed(() => [
   { icon: Wallet, label: 'موجودی قابل استفاده', value: `${formatNumber(balance.value)} تومان`, color: 'from-purple-500 to-blue-600' },
   { icon: TrendingUp, label: 'مجموع واریزی‌ها', value: `${formatNumber(totalDeposited.value)} تومان`, color: 'from-green-500 to-emerald-600' },
   { icon: TrendingDown, label: 'مجموع مصرف', value: `${formatNumber(totalSpent.value)} تومان`, color: 'from-orange-500 to-red-500' },
-  { icon: Clock, label: 'در انتظار تسویه', value: `${pendingCount.value} تراکنش`, color: 'from-yellow-500 to-amber-600' }
+  { icon: Clock, label: 'در انتظار تسویه', value: `${formatNumber(pendingCount.value)} تراکنش`, color: 'from-yellow-500 to-amber-600' }
 ])
 
 // --- نمودار ساده‌ی روند ۷ روز اخیر (داده نمایشی، بدون نیاز به پکیج نمودار) ---

@@ -2,9 +2,9 @@
 import { Search, Check } from 'lucide-vue-next'
 
 const stats = [
-  { value: '+۱۵۰۰۰', label: 'مشتری فعال', color: 'text-purple-400' },
+  { value: '+۱۵۰۰', label: 'مشتری فعال', color: 'text-purple-400' },
   { value: '۲۴/۷', label: 'پشتیبانی فنی', color: 'text-blue-400' },
-  { value: '۱۰۰Gbps', label: 'پورت شبکه', color: 'text-pink-400' },
+  { value: '۱۰Gbps', label: 'پورت شبکه', color: 'text-pink-400' },
   { value: '۹۹.۹۹٪', label: 'آپتایم', color: 'text-green-400' }
 ]
 

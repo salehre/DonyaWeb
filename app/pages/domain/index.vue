@@ -9,15 +9,63 @@ useHead({
   title: 'ثبت دامنه | دنیاوب'
 })
 
-// --- TLD price list ---
-const tlds = [
-  { ext: '.com', price: "تماس بگیرید" },
-  { ext: '.ir', price: "تماس بگیرید" },
-  { ext: '.net', price: "تماس بگیرید" },
-  { ext: '.org', price: "تماس بگیرید" },
-  { ext: '.io', price: "تماس بگیرید" },
-  { ext: '.co', price: "تماس بگیرید" }
-]
+// --- TLD products and prices ---
+const config = useRuntimeConfig()
+const apiHeaders = useApiHeaders()
+const categoryIndex = 2
+const tlds = ref([
+  { ext: '.com', productId: 2, price: null },
+  { ext: '.ir', productId: 1, price: null },
+  { ext: '.net', productId: 4, price: null },
+  { ext: '.org', productId: 3, price: null },
+  { ext: '.io', productId: 6, price: null },
+  { ext: '.co', productId: 5, price: null }
+])
+const isLoadingPrices = ref(true)
+
+function formatPrice(price) {
+  return Number(price).toLocaleString('fa-IR')
+}
+
+function displayPrice(tld) {
+  if (tld.price !== null) return formatPrice(tld.price)
+  return isLoadingPrices.value ? 'در حال دریافت...' : 'قیمت ناموجود'
+}
+
+async function fetchTldPrices() {
+  try {
+    const response = await $fetch(`${config.public.apiBase}/products/indexLite`, {
+      method: 'POST',
+      headers: apiHeaders.value,
+      body: {
+        allowSale: 0,
+        amount: 100,
+        direction: 'desc',
+        filters: [],
+        order: 'order',
+        page: 1,
+        category: String(categoryIndex),
+        typeCode: 0,
+        withAttrib: true
+      }
+    })
+
+    const productsById = new Map((response?.Products || []).map((product) => [Number(product.id), product]))
+    tlds.value = tlds.value.map((tld) => {
+      const product = productsById.get(tld.productId)
+      return {
+        ...tld,
+        price: product ? (product.final_price ?? product.price ?? null) : null
+      }
+    })
+  } catch (error) {
+    console.error('products/indexLite failed:', error)
+  } finally {
+    isLoadingPrices.value = false
+  }
+}
+
+await fetchTldPrices()
 
 // --- Domain search (client-side mock availability, replace with real API) ---
 const route = useRoute()
@@ -33,13 +81,13 @@ function searchDomain() {
   results.value = null
 
   setTimeout(() => {
-    results.value = tlds.map((t, i) => {
+    results.value = tlds.value.map((t, i) => {
       const seed = (name.length + i * 7) % 5
       return {
         domain: `${name}${t.ext}`,
         available: true,
         // available: seed !== 0,
-        price: t.price
+        price: displayPrice(t)
       }
     })
     isSearching.value = false
@@ -102,7 +150,7 @@ function toggleFaq(index) {
     <!-- Hero + Search -->
     <section class="relative pt-40 pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
       <div class="inline-flex items-center gap-1 mb-4 px-4 py-1 rounded-full glass text-sm text-purple-300 border border-purple-500/30">
-        <Globe class="inline w-4 h-4 -mt-1 ml-1" /> بیش از ۲۰۰ پسوند دامنه
+        <Globe class="inline w-4 h-4 -mt-1 ml-1" /> بیش از ۵۰ پسوند دامنه
       </div>
 
       <h1 class="text-4xl md:text-6xl font-bold mb-6 leading-tight">
@@ -136,7 +184,7 @@ function toggleFaq(index) {
 
         <div class="flex flex-wrap justify-center gap-4 mt-4 text-sm text-gray-400">
           <span v-for="t in tlds" :key="t.ext" class="flex items-center gap-1">
-            <Check class="w-4 h-4 text-green-400" /> {{ t.ext }} {{ t.price }} تومان
+            <Check class="w-4 h-4 text-green-400" /> {{ t.ext }} {{ displayPrice(t) }}<span v-if="t.price !== null"> تومان</span>
           </span>
         </div>
       </div>
@@ -204,7 +252,9 @@ function toggleFaq(index) {
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
         <div v-for="t in tlds" :key="t.ext" class="glass-card rounded-2xl p-6 text-center hover-lift">
           <div class="text-2xl font-bold text-purple-400 mb-2" dir="ltr">{{ t.ext }}</div>
-          <div class="text-gray-300 text-sm">{{ t.price }} تومان</div>
+          <div class="text-gray-300 text-sm">
+            {{ displayPrice(t) }}<span v-if="t.price !== null"> تومان</span>
+          </div>
         </div>
       </div>
     </section>

@@ -137,6 +137,71 @@ export function useWallet(currencyId = 1) {
     return data.value
   }
 
+  const depositPending = useState('wallet-deposit-pending', () => false)
+
+  // گرفتن اولین درگاه آنلاین فعال (مطابق منطق پروژه‌ی مرجع)
+  async function getOnlineGateway() {
+    const response = await $fetch(`${config.public.apiBase}/options/indexPaymentProcedure`, {
+      method: 'POST',
+      headers: headers.value,
+      body: { language_id: 1, currency_id: currencyId }
+    })
+
+    const onlineProcedure = (response?.PaymentProcedure || []).find(
+      (p) => p.dynamic_column_01 === 'onlinePayment' && p.gateways?.length
+    )
+
+    if (!onlineProcedure) {
+      throw new Error('درگاه پرداخت آنلاینی یافت نشد.')
+    }
+
+    return {
+      procedureId: onlineProcedure.id,
+      gatewayId: onlineProcedure.gateways[0].id,
+      gatewayTitle: onlineProcedure.gateways[0].title
+    }
+  }
+
+  // شارژ کیف پول از طریق درگاه بانکی؛ در صورت موفقیت آدرس درگاه برمی‌گردد تا کاربر ریدایرکت شود
+  async function depositViaGateway(amount) {
+    depositPending.value = true
+    try {
+      const { procedureId, gatewayId, gatewayTitle } = await getOnlineGateway()
+
+      const response = await $fetch(`${config.public.apiBase}/wallets/increaseBalance`, {
+        method: 'POST',
+        headers: headers.value,
+        body: {
+          currency_id: currencyId,
+          selectedPaymentProcedure: procedureId,
+          selectedGateway: gatewayId,
+          amount
+        }
+      })
+
+      if (response?.code !== 2000) {
+        throw new Error(response?.msg || response?.error || 'خطا در ایجاد تراکنش واریز')
+      }
+
+      if (!['jibit', 'zibal', 'zarinpal', 'saman'].includes(gatewayTitle)) {
+        throw new Error('این درگاه پرداخت پشتیبانی نمی‌شود.')
+      }
+
+      const paymentUrl =
+        response.GatewayResult?.payment_url ||
+        response.GatewayResult?.data?.payment_url ||
+        response.GatewayResult?.url
+
+      if (!paymentUrl) {
+        throw new Error('آدرس درگاه پرداخت یافت نشد.')
+      }
+
+      return paymentUrl
+    } finally {
+      depositPending.value = false
+    }
+  }
+
   return {
     // state
     balance,
@@ -152,6 +217,8 @@ export function useWallet(currencyId = 1) {
     ensureLoaded,
     refresh,
     requestWithdraw,
+    depositViaGateway,
+    depositPending,
     hasEnoughBalance,
     // helpers
     formatNumber

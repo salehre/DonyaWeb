@@ -32,7 +32,7 @@ const trustBadges = [
 const socialLinks = [
   // { icon: Instagram, label: 'اینستاگرام', href: '#' },
   // { icon: Twitter, label: 'توییتر', href: '#' },
-  { icon: Linkedin, label: 'لینکدین', href: 'https://www.linkedin.com/company/sinatech-dm/' }
+  // { icon: Linkedin, label: 'لینکدین', href: 'https://www.linkedin.com/company/sinatech-dm/' }
 ]
 
 // فرم عضویت در خبرنامه
@@ -140,7 +140,7 @@ function scrollToTop() {
                 support@donyaweb.com
               </a>
             </li>
-            <li class="flex items-center gap-2">
+            <li class="flex items-start gap-2">
               <MapPin class="w-4 h-4 shrink-0" />
               خیابان ولیعصر ، بالاتر ار پارک وی ،خیابان فیاضی ،پلاک 148 ،طبقه دوم
             </li>

@@ -16,8 +16,8 @@ const tokenCookie = useCookie("donyaweb_auth_token");
 
 const navItems = [
   { type: 'link', label: 'صفحه کاربری', to: '/dashboard', icon: LayoutDashboard },
-  { type: 'link', label: 'خرید جدید', to: '/start', icon: ShoppingCart },
-  { type: 'link', label: 'همه سرویس‌ها', to: { path: '/dashboard/services', query: {} }, icon: Settings },
+  // { type: 'link', label: 'خرید جدید', to: '/start', icon: ShoppingCart },
+  // { type: 'link', label: 'همه سرویس‌ها', to: { path: '/dashboard/services', query: {} }, icon: Settings },
   // {
   //   type: 'group',
   //   key: 'domains',

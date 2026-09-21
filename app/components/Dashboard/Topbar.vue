@@ -270,7 +270,7 @@ const logOut = () => {
       </NuxtLink>
 
       <!-- اعلانات -->
-      <div class="relative">
+      <!-- <div class="relative">
         <button
           ref="notifTriggerEl"
           type="button"
@@ -281,7 +281,6 @@ const logOut = () => {
           <span v-if="unreadCount > 0" class="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-pink-500 animate-pulse" />
         </button>
 
-        <!-- با Teleport بیرون از هدر رندر می‌شه تا هیچ کارتی با backdrop-filter نتونه روش بیفته -->
         <Teleport to="body">
           <Transition name="fade">
             <div
@@ -290,7 +289,6 @@ const logOut = () => {
               class="dropdown-panel rounded-xl overflow-hidden text-sm"
               :style="notifPanelStyle"
             >
-              <!-- هدر پنل -->
               <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
                 <span class="font-bold">اعلانات</span>
                 <button
@@ -304,7 +302,6 @@ const logOut = () => {
                 </button>
               </div>
 
-              <!-- لیست اعلانات -->
               <div class="max-h-80 overflow-y-auto scrollbar-thin">
                 <template v-if="notifications.length">
                   <button
@@ -334,7 +331,6 @@ const logOut = () => {
                 </div>
               </div>
 
-              <!-- فوتر پنل -->
               <div class="border-t border-white/10 p-2">
                 <NuxtLink
                   to="/dashboard/notifications"
@@ -347,7 +343,7 @@ const logOut = () => {
             </div>
           </Transition>
         </Teleport>
-      </div>
+      </div> -->
 
       <!-- منوی کاربر -->
       <div class="relative">
