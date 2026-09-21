@@ -42,10 +42,12 @@ const departmentOptions = computed(() =>
   }))
 )
 
+// ستون priority در دیتابیس عددی است. مقادیر عددی زیر فرض شده‌اند (۱ کم، ۲ عادی، ۳ فوری)
+// و باید با مپینگ بک‌اند چک شوند. value ها رشته‌اند چون StartCustomSelect مقدار String می‌گیرد.
 const priorities = [
-  { value: 'low', label: 'کم' },
-  { value: 'normal', label: 'عادی' },
-  { value: 'high', label: 'فوری' },
+  { value: '1', label: 'کم' },
+  { value: '2', label: 'عادی' },
+  { value: '3', label: 'فوری' },
 ]
 
 const priorityOptions = computed(() => priorities)
@@ -70,7 +72,7 @@ function isSuccessResponse(payload: any) {
 
 const subject = ref('')
 const department = ref('')
-const priority = ref('normal')
+const priority = ref('2')
 const message = ref('')
 const attachments = ref<File[]>([])
 const isSubmitting = ref(false)
@@ -131,7 +133,7 @@ async function handleSubmit() {
         title: subject.value,
         description: `<p>${message.value}</p>`,
         department: Number(department.value),
-        priority: priority.value,
+        priority: Number(priority.value),
         type: 1,
         product_id: null,
         ticket_files: ticketFiles,
