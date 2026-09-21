@@ -24,6 +24,11 @@ const notifPanelEl = ref(null)
 const menuPanelStyle = ref({})
 const notifPanelStyle = ref({})
 
+// ---- وضعیت لودینگ هدر (تا زمانی که اطلاعات کاربر/کیف‌پول آماده بشه، اسکلتون نمایش داده می‌شه) ----
+const headerLoading = computed(() => {
+  return user?.value == null || balance?.value == null
+})
+
 // ---- اعلانات ----
 const notifications = ref([
   {
@@ -209,7 +214,39 @@ const logOut = () => {
 </script>
 
 <template>
-  <header class="h-20 glass border-b border-white/10 flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-20">
+  <!-- ---- اسکلتون هدر (تا لود شدن اطلاعات کاربر/کیف‌پول) ---- -->
+  <header
+    v-if="headerLoading"
+    class="h-20 glass border-b border-white/10 flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-20"
+  >
+    <div class="flex items-center gap-4">
+      <div class="lg:hidden w-6 h-6 rounded-md skeleton" />
+      <div class="h-6 w-28 sm:w-36 rounded-md skeleton" />
+    </div>
+
+    <div class="flex items-center gap-3 sm:gap-4">
+      <!-- کیف پول -->
+      <div class="flex items-center gap-2 px-3 h-10 rounded-full glass">
+        <div class="w-4.5 h-4.5 rounded-full skeleton shrink-0" />
+        <div class="hidden md:block h-3.5 w-24 rounded skeleton" />
+      </div>
+
+      <!-- اعلانات -->
+      <div class="relative w-10 h-10 rounded-full glass flex items-center justify-center">
+        <div class="w-5 h-5 rounded-full skeleton" />
+      </div>
+
+      <!-- منوی کاربر -->
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-full skeleton shrink-0" />
+        <div class="hidden sm:block h-3.5 w-16 rounded skeleton" />
+        <div class="w-4 h-4 rounded skeleton" />
+      </div>
+    </div>
+  </header>
+
+  <!-- ---- هدر اصلی ---- -->
+  <header v-else class="h-20 glass border-b border-white/10 flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-20">
     <div class="flex items-center gap-4">
       <button type="button" class="lg:hidden text-gray-300 hover:text-white transition-colors" @click="sidebarOpen = true">
         <Menu class="w-6 h-6" />
@@ -368,5 +405,38 @@ const logOut = () => {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+/* ---- اسکلتون ---- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.14),
+    transparent
+  );
+  animation: shimmer 1.6s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
 }
 </style>

@@ -40,5 +40,33 @@ export function useUserInfo() {
     setUser(null)
   }
 
-  return { user, load, setUser, clearUser }
+  // دریافت اطلاعات تازه‌ی کاربر از API: users/userInfo → { code: 2000, User: {...} }
+  // این تابع باید همزمان (قبل از هر await) از داخل setup/onMounted صدا زده شود تا کانتکست Nuxt در دسترس باشد.
+  async function fetchUser() {
+    const config = useRuntimeConfig()
+    const headers = useApiHeaders()
+
+    const response = await $fetch(`${config.public.apiBase}/users/userInfo`, {
+      method: 'POST',
+      headers: headers.value
+    })
+
+    if (Number(response?.code) !== 2000 || !response?.User) {
+      console.error('users/userInfo unexpected response:', response)
+      throw new Error('دریافت اطلاعات کاربر ناموفق بود.')
+    }
+
+    // شماره شبا در پاسخ userInfo برنمی‌گردد و فقط سمت کلاینت نگه داشته می‌شود؛
+    // پس هنگام رفرش، مقدار ذخیره‌شده را از بین نمی‌بریم.
+    const savedIban = user.value?.irb_iban_number
+    setUser(
+      savedIban && !response.User.irb_iban_number
+        ? { ...response.User, irb_iban_number: savedIban }
+        : response.User
+    )
+
+    return user.value
+  }
+
+  return { user, load, setUser, clearUser, fetchUser }
 }

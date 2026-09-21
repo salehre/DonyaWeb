@@ -154,7 +154,7 @@ function initials(name) {
     .split(/\s+/)
     .filter(Boolean)
     .map((word) => word[0])
-    .slice(0, 2)
+    .slice(0, 1)
     .join('')
 }
 
@@ -234,14 +234,37 @@ async function sendReply() {
     </div>
 
     <div class="glass-card rounded-3xl p-6 sm:p-8">
-      <h1 class="text-xl sm:text-2xl font-bold mb-2">{{ ticket.subject }}</h1>
-      <p class="text-sm text-gray-500">
-        <span dir="ltr">#{{ ticket.id }}</span>
-        · {{ ticket.department }}
-        <template v-if="ticket.product"> · {{ ticket.product }}</template>
-        <template v-if="ticket.priority"> · اولویت: {{ ticket.priority }}</template>
-        <template v-if="ticket.created"> · ثبت شده در {{ ticket.created }}</template>
-      </p>
+      <h1 class="text-xl sm:text-2xl font-bold mb-2">{{ ticket.subject }} - <span dir="ltr">#{{ ticket.id }}</span></h1>
+
+<div class="flex flex-wrap items-center gap-2 mt-3">
+  <span
+    v-if="ticket.department"
+    class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border whitespace-nowrap bg-blue-500/10 text-blue-400 border-blue-500/30"
+  >
+    {{ ticket.department }}
+  </span>
+
+  <span
+    v-if="ticket.product"
+    class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border whitespace-nowrap bg-purple-500/10 text-purple-400 border-purple-500/30"
+  >
+    {{ ticket.product }}
+  </span>
+
+  <span
+    v-if="ticket.priority"
+    class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border whitespace-nowrap bg-orange-500/10 text-orange-400 border-orange-500/30"
+  >
+    اولویت: {{ ticket.priority }}
+  </span>
+
+  <span
+    v-if="ticket.created"
+    class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border whitespace-nowrap bg-gray-500/10 text-gray-400 border-gray-500/30"
+  >
+    ثبت شده در {{ ticket.created }}
+  </span>
+</div>
     </div>
 
     <div class="space-y-4">

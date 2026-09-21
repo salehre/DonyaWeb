@@ -1,5 +1,12 @@
 <script setup>
 const sidebarOpen = useState('dashboardSidebarOpen', () => false)
+
+// موجودی کیف پول در Topbar نشان داده می‌شود؛ با ورود به داشبورد از API تازه گرفته می‌شود
+const { fetchBalance } = useWallet()
+
+onMounted(() => {
+  fetchBalance(true)
+})
 </script>
 
 <template>

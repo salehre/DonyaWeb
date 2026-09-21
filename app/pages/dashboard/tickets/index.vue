@@ -31,10 +31,42 @@ onMounted(async () => {
   }
 })
 
-const priorityLabels: Record<string, { label: string; class: string }> = {
-  low: { label: 'کم', class: 'text-gray-400' },
-  normal: { label: 'عادی', class: 'text-yellow-400' },
-  high: { label: 'فوری', class: 'text-red-400' },
+type PriorityMeta = { label: string; class: string }
+
+const lowPriority: PriorityMeta = { label: 'کم', class: 'text-green-400' }
+const normalPriority: PriorityMeta = { label: 'عادی', class: 'text-yellow-400' }
+const highPriority: PriorityMeta = { label: 'فوری', class: 'text-red-400' }
+
+// مقدار عددی ستون priority: ۱ کم، ۲ عادی، ۳ زیاد (مطابق پروژه‌ی Vuetify)
+const priorityByNumber: Record<number, PriorityMeta> = {
+  1: lowPriority,
+  2: normalPriority,
+  3: highPriority,
+}
+
+// متن priority_text؛ چند نام رایج برای اولویت بالا هم پوشش داده شده
+const priorityByText: Record<string, PriorityMeta> = {
+  low: lowPriority,
+  normal: normalPriority,
+  high: highPriority,
+  urgent: highPriority,
+  very_high: highPriority,
+  critical: highPriority,
+  important: highPriority,
+}
+
+function getPriority(ticket: any): PriorityMeta {
+  const meta =
+    priorityByNumber[Number(ticket?.priority)] ??
+    priorityByText[String(ticket?.priority_text ?? '').toLowerCase()]
+
+  if (meta) return meta
+
+  // ناشناخته: خود مقدار خام را نشان می‌دهیم تا خالی نماند
+  return {
+    label: String(ticket?.priority_text ?? ticket?.priority ?? '—'),
+    class: 'text-green-400',
+  }
 }
 
 watch(
@@ -88,10 +120,10 @@ watch(
 
           <div
             class="hidden sm:flex items-center gap-2 text-xs font-medium"
-            :class="priorityLabels[t.priority_text]?.class"
+            :class="getPriority(t).class"
           >
             اولویت:
-            {{ priorityLabels[t.priority_text]?.label }}
+            {{ getPriority(t).label }}
           </div>
 
           <DashboardStatusBadge :status="t.status_text" />

@@ -4,10 +4,14 @@
 // نسخه‌ی جدا و ایزوله‌ی خودش از این state رو داشته باشه.
 // با فراخوانی fetchBalance/fetchTransactions فقط یک‌بار per session به API واقعی
 // زده می‌شه و نتیجه بین همه‌ی مصرف‌کننده‌ها به اشتراک گذاشته می‌شه (بدون درخواست تکراری).
+//
+// موجودی مطابق منطق پروژه‌ی مرجع: wallets/getBalance → response.Wallets و انتخاب
+// کیف‌پولی که currency_id آن برابر currencyId است (پیش‌فرض ۱، مثل currencyCode در مرجع).
 
-export function useWallet() {
+export function useWallet(currencyId = 1) {
   const config = useRuntimeConfig()
   const headers = useApiHeaders()
+  const toast = useToast()
 
   // پاسخ خام API
   const wallets = useState('wallet-wallets', () => [])
@@ -19,9 +23,11 @@ export function useWallet() {
   const balanceLoaded = useState('wallet-balance-loaded', () => false)
   const transactionsLoaded = useState('wallet-transactions-loaded', () => false)
 
-  // کیف‌پول تومانی (ارز اصلی پلتفرم)
-  const tomanWallet = computed(() => wallets.value.find((w) => w.currency_symbol === 'IRT'))
-  const balance = computed(() => Number(tomanWallet.value?.balance ?? 0))
+  // کیف‌پول ارز اصلی (currency_id = 1)
+  const wallet = computed(
+    () => wallets.value.find((w) => Number(w.currency_id) === Number(currencyId)) ?? null
+  )
+  const balance = computed(() => Number(wallet.value?.balance ?? 0))
 
   // تاریخچه‌ی تراکنش‌ها با قالب یکسان، برای استفاده مستقیم در جدول‌ها/فیلترها
   const transactions = computed(() =>
@@ -58,12 +64,22 @@ export function useWallet() {
     if (balanceLoaded.value && !force) return
     balancePending.value = true
     try {
-      const { data } = await useFetch(`${config.public.apiBase}/wallets/getBalance`, {
+      const response = await $fetch(`${config.public.apiBase}/wallets/getBalance`, {
         method: 'POST',
-        headers
+        headers: headers.value
       })
-      wallets.value = data.value?.Wallets ?? []
+
+      if (!Array.isArray(response?.Wallets)) {
+        console.warn('wallets/getBalance unexpected response:', response)
+      }
+
+      wallets.value = response?.Wallets ?? []
       balanceLoaded.value = true
+    } catch (error) {
+      console.error('Wallet balance fetch error:', error, error?.data)
+      if (import.meta.client) {
+        toast.error('دریافت موجودی کیف پول ناموفق بود.')
+      }
     } finally {
       balancePending.value = false
     }

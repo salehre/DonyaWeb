@@ -214,7 +214,7 @@ async function handleCheckout() {
           </div>
 
           <!-- اطلاعات مشتری -->
-          <div class="glass-card rounded-2xl p-6">
+          <!-- <div class="glass-card rounded-2xl p-6">
             <h2 class="font-bold mb-4">اطلاعات مشتری</h2>
 
             <div class="flex gap-3 mb-5">
@@ -307,7 +307,7 @@ async function handleCheckout() {
                 </div>
               </div>
             </div>
-          </div>
+          </div> -->
 
           <!-- روش پرداخت -->
           <!-- <div class="glass-card rounded-2xl p-6">

@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from 'vue'
-import { User, AtSign, Phone, Building2, Lock, Save, CreditCard } from 'lucide-vue-next'
+import { ref, computed, onMounted } from 'vue'
+import { User, AtSign, Phone, Lock, Save, CreditCard, Hash, Calendar } from 'lucide-vue-next'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -12,14 +12,97 @@ useHead({
   title: 'حساب کاربری | دنیاوب'
 })
 
-const { user, setUser } = useUserInfo()
+const { user, setUser, fetchUser } = useUserInfo()
 
-const profile = ref({
-  name: user.value?.full_name || '',
-  email: user.value?.email || '',
-  phone: user.value?.mobile || '',
-  company: user.value?.register_platform || ''
+// ---- اطلاعات پروفایل (فقط نمایش؛ از users/userInfo → User) ----
+
+const u = computed(() => user.value || {})
+
+// با ورود به صفحه، اطلاعات تازه‌ی کاربر از API گرفته می‌شود (در صورت خطا همان داده‌ی ذخیره‌شده می‌ماند)
+onMounted(async () => {
+  try {
+    await fetchUser()
+  } catch (err) {
+    console.error('User info refresh error:', err, err?.data)
+  }
 })
+
+const green = 'bg-green-500/10 text-green-400 border-green-500/30'
+const gray = 'bg-gray-500/10 text-gray-400 border-gray-500/30'
+
+const statusLabels = { active: 'فعال' }
+const genderLabels = { woman: 'زن', man: 'مرد' }
+
+function isTrue(value) {
+  return value === true || value === 1 || value === '1'
+}
+
+// تاریخ تولد فقط روز است؛ بدون جابه‌جایی منطقه‌ی زمانی
+const dateOnlyFormatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  timeZone: 'UTC'
+})
+
+// تاریخ‌وساعت‌های سرور UTC هستند → نمایش به وقت تهران
+const dateTimeFormatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: 'Asia/Tehran'
+})
+
+function formatBirthDate(value) {
+  if (!value) return ''
+  const date = new Date(`${String(value).slice(0, 10)}T00:00:00Z`)
+  return Number.isNaN(date.getTime()) ? String(value) : dateOnlyFormatter.format(date)
+}
+
+function formatDateTime(value) {
+  if (!value) return ''
+  const raw = String(value).trim().replace(' ', 'T')
+  const hasZone = /(Z|[+-]\d{2}:?\d{2})$/i.test(raw)
+  const date = new Date(hasZone ? raw : `${raw}Z`)
+  return Number.isNaN(date.getTime()) ? String(value) : dateTimeFormatter.format(date)
+}
+
+// موبایل در API بدون صفر ابتدایی می‌آید (مثلاً 9300377838)
+function formatMobile(value) {
+  const digits = String(value ?? '').trim()
+  if (!digits) return ''
+  return digits.length === 10 && digits.startsWith('9') ? `0${digits}` : digits
+}
+
+const avatarLetter = computed(() => u.value.first_name?.charAt(0) || u.value.full_name?.charAt(0) || '؟')
+
+const statusLabel = computed(() => statusLabels[u.value.status_text] ?? u.value.status_text ?? '')
+
+const infoRows = computed(() => {
+  const data = u.value
+  const gender = genderLabels[data.gender_text]
+
+  const rows = [
+    { label: 'نام', value: data.first_name, icon: User },
+    { label: 'نام خانوادگی', value: data.last_name, icon: User },
+    { label: 'شماره موبایل', value: formatMobile(data.mobile), icon: Phone, ltr: true, verified: isTrue(data.verified_mobile) },
+    { label: 'ایمیل', value: data.email, icon: AtSign, ltr: true, verified: data.email ? isTrue(data.verified_email) : null },
+    { label: 'کد ملی', value: data.national_code, icon: Hash, ltr: true },
+    { label: 'تاریخ تولد', value: formatBirthDate(data.birth_date), icon: Calendar },
+    { label: 'تاریخ عضویت', value: formatDateTime(data.register_date), icon: Calendar }
+  ]
+
+  if (gender) {
+    rows.splice(6, 0, { label: 'جنسیت', value: gender, icon: User })
+  }
+
+  return rows
+})
+
+// ---- تنظیمات اعلان‌ها ----
 
 const passwords = ref({
   current: '',
@@ -34,31 +117,10 @@ const notifications = ref({
   marketing: false
 })
 
-const isSavingProfile = ref(false)
 const isSavingPassword = ref(false)
 const toast = useToast()
 
-async function saveProfile() {
-  isSavingProfile.value = true
-  try {
-    await $fetch(`${baseUrl}/users/update`, {
-      method: 'POST',
-      headers: headers.value,
-      body: {
-        full_name: profile.value.name,
-        email: profile.value.email,
-        phone: profile.value.phone,
-        company: profile.value.company
-      }
-    })
-    toast.success('اطلاعات پروفایل با موفقیت ذخیره شد.')
-  } catch (err) {
-    const message = err?.data?.message || err?.data?.error || 'ذخیره اطلاعات پروفایل با خطا مواجه شد.'
-    toast.error(message)
-  } finally {
-    isSavingProfile.value = false
-  }
-}
+// ---- اطلاعات بانکی ----
 
 const ibanNumber = ref(
   normalizeShebaInput(
@@ -163,6 +225,8 @@ async function saveBankInfo() {
   }
 }
 
+// ---- تغییر رمز عبور ----
+
 async function savePassword() {
   if (!passwords.value.current || !passwords.value.next || !passwords.value.confirm) {
     toast.error('لطفاً همه فیلدها را تکمیل کنید')
@@ -208,52 +272,54 @@ async function savePassword() {
   <div class="max-w-3xl mx-auto space-y-6">
     <!-- Profile -->
     <div class="glass-card rounded-3xl p-6 sm:p-8">
-      <h2 class="text-lg font-bold mb-6">اطلاعات پروفایل</h2>
-
-      <form class="space-y-5" @submit.prevent="saveProfile">
-        <div class="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label for="name" class="block text-sm text-gray-300 mb-2">نام و نام خانوادگی</label>
-            <div class="relative">
-              <User class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-              <input id="name" v-model="profile.name" type="text" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
-            </div>
-          </div>
-          <div>
-            <label for="email" class="block text-sm text-gray-300 mb-2">ایمیل</label>
-            <div class="relative">
-              <AtSign class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-              <input id="email" v-model="profile.email" type="email" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
-            </div>
-          </div>
-        </div>
-
-        <div class="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label for="phone" class="block text-sm text-gray-300 mb-2">شماره تماس</label>
-            <div class="relative">
-              <Phone class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-              <input id="phone" v-model="profile.phone" type="tel" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
-            </div>
-          </div>
-          <div>
-            <label for="company" class="block text-sm text-gray-300 mb-2">نام شرکت (اختیاری)</label>
-            <div class="relative">
-              <Building2 class="w-5 h-5 text-gray-400 absolute top-1/2 -translate-y-1/2 right-4" />
-              <input id="company" v-model="profile.company" type="text" class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white outline-none">
-            </div>
-          </div>
-        </div>
-
-        <!-- <button
-          type="submit"
-          :disabled="isSavingProfile"
-          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60"
+      <div class="flex items-center gap-4 mb-6">
+        <div
+          class="w-14 h-14 rounded-full bg-linear-to-br from-purple-500 to-blue-600 flex items-center justify-center text-lg font-bold shrink-0"
         >
-          <Save class="w-4 h-4" />
-          {{ isSavingProfile ? 'در حال ذخیره...' : 'ذخیره تغییرات' }}
-        </button> -->
-      </form>
+          {{ avatarLetter }}
+        </div>
+
+        <div class="min-w-0">
+          <h2 class="text-lg font-bold truncate">{{ u.full_name || 'اطلاعات پروفایل' }}</h2>
+          <p class="text-xs text-gray-500">
+            <template v-if="u.id">
+              کد کاربری: <span dir="ltr">#{{ u.id }}</span>
+            </template>
+            <template v-if="statusLabel"> · وضعیت حساب: {{ statusLabel }}</template>
+          </p>
+        </div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div
+          v-for="row in infoRows"
+          :key="row.label"
+          class="rounded-2xl bg-white/5 border border-white/10 px-4 py-3"
+        >
+          <p class="flex items-center gap-2 text-xs text-gray-400 mb-1">
+            <component :is="row.icon" class="w-4 h-4" />
+            {{ row.label }}
+          </p>
+
+          <div class="flex items-center justify-between gap-2">
+            <span
+              class="text-sm font-medium truncate"
+              :class="row.value ? 'text-white' : 'text-gray-500'"
+              :dir="row.ltr && row.value ? 'ltr' : undefined"
+            >
+              {{ row.value || 'ثبت نشده' }}
+            </span>
+
+            <span
+              v-if="row.verified !== null && row.verified !== undefined"
+              class="text-[11px] px-2 py-0.5 rounded-full border whitespace-nowrap"
+              :class="row.verified ? green : gray"
+            >
+              {{ row.verified ? 'تأیید شده' : 'تأیید نشده' }}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Bank Info -->
