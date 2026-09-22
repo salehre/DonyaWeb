@@ -29,15 +29,31 @@ const transactions = computed(() =>
 
 const toast = useToast()
 
-const quickAmounts = [100000, 500000, 1000000, 2000000]
-const amount = ref(200000)
+const quickAmounts = [200000, 500000, 1000000, 2000000]
+const amount = ref(null)
 const customAmount = ref('')
 const method = ref('gateway')
 const isSubmitting = ref(false)
 
+function toEnglishDigits(value) {
+  return String(value || '')
+    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+}
+
+function toPersianAmount(value) {
+  return toEnglishDigits(value)
+    .replace(/\D/g, '')
+    .replace(/[0-9]/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)])
+}
+
+function numericAmount(value) {
+  return Number(toEnglishDigits(value)) || 0
+}
+
 function selectQuick(a) {
   amount.value = a
-  customAmount.value = ''
+  customAmount.value = toPersianAmount(a)
 }
 
 function goBack() {
@@ -45,7 +61,7 @@ function goBack() {
 }
 
 async function handleTopup() {
-  const finalAmount = customAmount.value ? Number(customAmount.value) : amount.value
+  const finalAmount = customAmount.value ? numericAmount(customAmount.value) : amount.value
   if (!finalAmount || finalAmount < 10000) {
     toast.error('حداقل مبلغ شارژ ۱۰,۰۰۰ تومان است')
     return
@@ -94,14 +110,14 @@ async function handleTopup() {
       <h2 class="text-lg font-bold">افزایش موجودی</h2>
 
       <div>
-        <label class="block text-sm text-gray-300 mb-3">مبلغ شارژ</label>
+        <label class="block text-sm text-gray-300 mb-3">مبلغ شارژ (تومان)</label>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
           <button
             v-for="a in quickAmounts"
             :key="a"
             type="button"
             class="py-3 rounded-xl text-sm font-medium border transition-all"
-            :class="amount === a && !customAmount
+            :class="numericAmount(customAmount) === a
               ? 'bg-linear-to-r from-purple-600 to-blue-600 border-transparent shadow-lg shadow-purple-500/30'
               : 'glass border-white/10 text-gray-300 hover:text-white hover:border-purple-500/40'"
             @click="selectQuick(a)"
@@ -111,10 +127,13 @@ async function handleTopup() {
         </div>
         <input
           v-model="customAmount"
-          type="number"
-          min="10000"
+          type="text"
+          inputmode="numeric"
+          dir="ltr"
+          min="200000"
           placeholder="یا مبلغ دلخواه را وارد کنید (تومان)"
-          class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none"
+          class="w-full px-4 py-3 rounded-xl input-glass text-left text-white placeholder:text-right placeholder-gray-500 outline-none"
+          @input="customAmount = toPersianAmount(customAmount)"
         >
       </div>
 
