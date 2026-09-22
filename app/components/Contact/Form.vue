@@ -4,18 +4,9 @@ import {
   User, AtSign, MessageSquare, Clock, Instagram, Twitter, Linkedin, Send
 } from 'lucide-vue-next'
 
-const departments = [
-  { value: 'sales', label: 'فروش و سفارش‌ها' },
-  { value: 'support', label: 'پشتیبانی فنی' },
-  { value: 'billing', label: 'مالی و صورت‌حساب' },
-  { value: 'other', label: 'سایر موارد' }
-]
-
-const departmentOptions = computed(() => departments)
 
 const name = ref('')
 const email = ref('')
-const department = ref('sales')
 const message = ref('')
 const isSubmitting = ref(false)
 const submitted = ref(false)
@@ -97,15 +88,6 @@ async function handleSubmit() {
             </div>
           </div>
 
-          <div>
-            <label for="department" class="block text-sm text-gray-300 mb-2">موضوع پیام</label>
-            <StartCustomSelect
-              id="department"
-              v-model="department"
-              :options="departmentOptions"
-              placeholder="انتخاب موضوع"
-            />
-          </div>
 
           <div>
             <label for="contact-message" class="block text-sm text-gray-300 mb-2">پیام شما</label>
@@ -164,7 +146,7 @@ async function handleSubmit() {
 
         <div class="glass-card rounded-3xl p-8">
           <h3 class="text-lg font-bold mb-2">دفتر مرکزی</h3>
-          <p class="text-gray-400 text-sm leading-relaxed mb-4">خیابان ولیعصر ، بالاتر ار پارک وی ،خیابان فیاضی ،پلاک 148 ،طبقه دوم</p>
+          <p class="text-gray-400 text-sm leading-relaxed mb-4">خیابان ولیعصر، بالاتر از پارک وی، خیابان فیاضی، پلاک 148، طبقه دوم</p>
           <div class="rounded-2xl overflow-hidden border border-white/10 h-40 bg-white/5 flex items-center justify-center text-gray-500 text-sm">
             <NuxtImg class="w-full h-full object-cover" src="/map.png" cover />
           </div>

@@ -128,14 +128,9 @@ async function handleLogin() {
             </div>
           </div>
 
-          <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer select-none">
-            <input
-              v-model="rememberMe"
-              type="checkbox"
-              class="w-4 h-4 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0"
-            >
-            مرا به خاطر بسپار
-          </label>
+          <p class="text-sm text-gray-400">
+            با ورود، با قوانین و مقررات دنیاوب موافقت می‌کنید.
+          </p>
 
           <button
             type="submit"

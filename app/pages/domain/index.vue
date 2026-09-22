@@ -9,27 +9,19 @@ useHead({
   title: 'ثبت دامنه | دنیاوب'
 })
 
-// --- TLD products and prices ---
+// --- TLD products and prices (از API) ---
 const config = useRuntimeConfig()
 const apiHeaders = useApiHeaders()
-const categoryIndex = 2
-const tlds = ref([
-  { ext: '.com', productId: 2, price: null },
-  { ext: '.ir', productId: 1, price: null },
-  { ext: '.net', productId: 4, price: null },
-  { ext: '.org', productId: 3, price: null },
-  { ext: '.io', productId: 6, price: null },
-  { ext: '.co', productId: 5, price: null }
-])
+const DOMAIN_CATEGORY_ID = '1' // دسته‌ی "پسوند دامنه" در پنل دنیاوب
+const tlds = ref([])
 const isLoadingPrices = ref(true)
 
-function formatPrice(price) {
-  return Number(price).toLocaleString('fa-IR')
-}
-
 function displayPrice(tld) {
-  if (tld.price !== null) return formatPrice(tld.price)
-  return isLoadingPrices.value ? 'در حال دریافت...' : 'قیمت ناموجود'
+  if (!tld || tld.price === null || tld.price === undefined) {
+    return isLoadingPrices.value ? 'در حال دریافت...' : 'قیمت ناموجود'
+  }
+  const amount = Number(tld.price).toLocaleString('fa-IR')
+  return tld.currencyName ? `${amount} ${tld.currencyName}` : amount
 }
 
 async function fetchTldPrices() {
@@ -44,22 +36,39 @@ async function fetchTldPrices() {
         filters: [],
         order: 'order',
         page: 1,
-        category: String(categoryIndex),
+        category: DOMAIN_CATEGORY_ID,
         typeCode: 0,
-        withAttrib: true
+        withAttrib: false
       }
     })
 
-    const productsById = new Map((response?.Products || []).map((product) => [Number(product.id), product]))
-    tlds.value = tlds.value.map((tld) => {
-      const product = productsById.get(tld.productId)
-      return {
-        ...tld,
-        price: product ? (product.final_price ?? product.price ?? null) : null
-      }
-    })
+    if (Number(response?.code) !== 2000) {
+      console.error('[Domain] پاسخ نامعتبر از products/indexLite:', response)
+      return
+    }
+
+    const seenIds = new Set()
+    tlds.value = (response.Products || [])
+      .filter((product) => {
+        if (!product.title_fa || seenIds.has(product.id)) return false
+        seenIds.add(product.id)
+        return true
+      })
+      .map((product) => {
+        const lastPrice = product.product_last_prices
+        const rawPrice = product.active_price ?? lastPrice?.price ?? product.final_price ?? product.price ?? null
+        return {
+          id: product.id,
+          ext: product.title_fa, // مثل ".com" — همون‌طور که تو پنل ثبت شده
+          slug: product.slug_fa,
+          price: rawPrice !== null ? Number(rawPrice) : null,
+          currencyName: lastPrice?.currency_name || null,
+          currencySymbol: lastPrice?.currency_symbol || null,
+          sellable: Boolean(product.allow_sale) && product.status === 1
+        }
+      })
   } catch (error) {
-    console.error('products/indexLite failed:', error)
+    console.error('[Domain] خطا در دریافت قیمت دامنه‌ها:', error)
   } finally {
     isLoadingPrices.value = false
   }
@@ -67,7 +76,10 @@ async function fetchTldPrices() {
 
 await fetchTldPrices()
 
-// --- Domain search (client-side mock availability, replace with real API) ---
+// --- Domain search ---
+// نکته: این جستجو فقط قیمت/فعال‌بودن پسوند رو از محصولات همین دسته نشون می‌ده.
+// چک واقعی «آیا دقیقاً همین نام دامنه قبلاً ثبت شده یا نه» به یک endpoint جدا (مثل WHOIS/Check) نیاز داره
+// که در نمونه‌کد فعلی وجود نداشت — اگه آدرسش رو داری بگو تا اینجا هم وصلش کنم.
 const route = useRoute()
 const query = ref(typeof route.query.domain === 'string' ? route.query.domain : '')
 const isSearching = ref(false)
@@ -81,15 +93,11 @@ function searchDomain() {
   results.value = null
 
   setTimeout(() => {
-    results.value = tlds.value.map((t, i) => {
-      const seed = (name.length + i * 7) % 5
-      return {
-        domain: `${name}${t.ext}`,
-        available: true,
-        // available: seed !== 0,
-        price: displayPrice(t)
-      }
-    })
+    results.value = tlds.value.map((t) => ({
+      domain: `${name}${t.ext}`,
+      available: t.sellable,
+      price: displayPrice(t)
+    }))
     isSearching.value = false
   }, 700)
 }
@@ -183,8 +191,8 @@ function toggleFaq(index) {
         </form>
 
         <div class="flex flex-wrap justify-center gap-4 mt-4 text-sm text-gray-400">
-          <span v-for="t in tlds" :key="t.ext" class="flex items-center gap-1">
-            <Check class="w-4 h-4 text-green-400" /> {{ t.ext }} {{ displayPrice(t) }}<span v-if="t.price !== null"> تومان</span>
+          <span v-for="t in tlds" :key="t.id" class="flex items-center gap-1">
+            <Check class="w-4 h-4 text-green-400" /> {{ t.ext }} {{ displayPrice(t) }}
           </span>
         </div>
       </div>
@@ -206,7 +214,7 @@ function toggleFaq(index) {
               <span class="text-sm" :class="r.available ? 'text-green-400' : 'text-red-400'">
                 {{ r.available ? 'در دسترس' : 'قبلاً ثبت شده' }}
               </span>
-              <span v-if="r.available" class="text-gray-300 text-sm hidden sm:block">{{ r.price }} تومان</span>
+              <span v-if="r.available" class="text-gray-300 text-sm hidden sm:block">{{ r.price }}</span>
               <NuxtLink
                 v-if="r.available"
                 :to="`/checkout-domain?domain=${r.domain}`"
@@ -250,10 +258,10 @@ function toggleFaq(index) {
       </div>
 
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-        <div v-for="t in tlds" :key="t.ext" class="glass-card rounded-2xl p-6 text-center hover-lift">
+        <div v-for="t in tlds" :key="t.id" class="glass-card rounded-2xl p-6 text-center hover-lift">
           <div class="text-2xl font-bold text-purple-400 mb-2" dir="ltr">{{ t.ext }}</div>
           <div class="text-gray-300 text-sm">
-            {{ displayPrice(t) }}<span v-if="t.price !== null"> تومان</span>
+            {{ displayPrice(t) }}
           </div>
         </div>
       </div>

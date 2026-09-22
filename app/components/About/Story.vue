@@ -36,7 +36,7 @@ import { Target, Rocket } from 'lucide-vue-next'
           </div>
         </div>
 
-        <div class="relative">
+        <div class="relative text-left"  dir="ltr">
           <div class="absolute inset-0 bg-linear-to-r from-purple-500 to-blue-500 rounded-3xl blur-2xl opacity-30" />
           <div class="glass-strong rounded-3xl p-6 relative">
             <div class="flex items-center gap-2 mb-4">
@@ -46,20 +46,17 @@ import { Target, Rocket } from 'lucide-vue-next'
             </div>
             <div class="space-y-3 font-mono text-sm">
               <div class="flex gap-2 text-green-400">
-                <span>$</span>
-                <span>whoami</span>
+                <span>$ whoami</span>
               </div>
-              <div class="text-gray-300">donyaweb — founded 1398</div>
+              <div class="text-gray-300">Donyaweb - Founded 1389</div>
               <div class="flex gap-2 text-blue-400 mt-4">
-                <span>$</span>
-                <span>uptime --since founding</span>
+                <span>$ uptime --since founding</span>
               </div>
               <div class="text-gray-300">99.9% average uptime, every year</div>
               <div class="flex gap-2 text-purple-400 mt-4">
-                <span>$</span>
-                <span>cat mission.txt</span>
+                <span>$ cat mission.txt</span>
               </div>
-              <div class="text-gray-300">"زیرساخت را ساده و قابل‌اعتماد کن"</div>
+              <div class="text-gray-300">"Make infrastructure simple and reliable"</div>
             </div>
           </div>
         </div>

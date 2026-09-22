@@ -142,7 +142,7 @@ function scrollToTop() {
             </li>
             <li class="flex items-start gap-2">
               <MapPin class="w-4 h-4 shrink-0" />
-              خیابان ولیعصر ، بالاتر ار پارک وی ،خیابان فیاضی ،پلاک 148 ،طبقه دوم
+              خیابان ولیعصر، بالاتر از پارک وی، خیابان فیاضی، پلاک 148، طبقه دوم
             </li>
           </ul>
         </div>

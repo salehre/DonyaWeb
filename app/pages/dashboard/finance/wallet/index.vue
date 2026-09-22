@@ -115,7 +115,7 @@ const searchQuery = ref('')
 const filters = [
   { id: 'all', label: 'همه' },
   { id: 'topup', label: 'واریز' },
-  { id: 'usage', label: 'مصرف' },
+  // { id: 'usage', label: 'مصرف' },
   { id: 'withdraw', label: 'برداشت' }
 ]
 

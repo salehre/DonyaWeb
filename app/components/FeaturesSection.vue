@@ -46,7 +46,7 @@ const features = [
           </div>
         </div>
 
-        <div class="relative">
+        <div class="relative text-left"  dir="ltr">
           <div class="absolute inset-0 bg-linear-to-r from-purple-500 to-blue-500 rounded-3xl blur-2xl opacity-30"></div>
           <div class="glass-strong rounded-3xl p-6 relative">
             <div class="flex items-center gap-2 mb-4">
@@ -56,13 +56,11 @@ const features = [
             </div>
             <div class="space-y-3 font-mono text-sm">
               <div class="flex gap-2 text-green-400">
-                <span>$</span>
-                <span>uptime</span>
+                <span>$ uptime</span>
               </div>
               <div class="text-gray-300">99.99% uptime - Last 30 days</div>
               <div class="flex gap-2 text-blue-400 mt-4">
-                <span>$</span>
-                <span>ping donyaweb.com</span>
+                <span>$ ping donyaweb.com</span>
               </div>
               <div class="text-gray-300">Reply from 185.XXX.XXX.XXX: bytes=32 time=12ms TTL=55</div>
               <div class="text-gray-300">Reply from 185.XXX.XXX.XXX: bytes=32 time=11ms TTL=55</div>
