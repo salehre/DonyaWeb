@@ -183,12 +183,12 @@ const activeTabConfig = computed(() => tabsConfig.find((c) => c.value === tab.va
             <div v-if="!isReturnedTab" class="mb-2 flex items-center justify-between">
               <span class="text-xs text-gray-500">{{ t('discount') }}</span>
               <span class="text-sm text-gray-200">
-                {{ (c.discount_price + c.other_price) !== 0 ? numberWithSeparator(c.discount_price + c.other_price) + ' ' + c.currency_name : '---' }}
+                {{ (c.discount_price + c.other_price) !== 0 ? numberWithSeparator(c.discount_price + c.other_price) + ' تومان' : '---' }}
               </span>
             </div>
             <div class="mb-3 flex items-center justify-between">
               <span class="text-xs text-gray-500">{{ c.status_text?.includes('return') ? 'مبلغ کل قابل استرداد' : t('total_price') }}</span>
-              <span class="text-sm font-semibold text-white">{{ numberWithSeparator(c.total_price) }} {{ c.currency_name }}</span>
+              <span class="text-sm font-semibold text-white">{{ numberWithSeparator(c.total_price) }} تومان</span>
             </div>
             <NuxtLink
               :to="invoiceLink(c)"
@@ -234,7 +234,7 @@ const activeTabConfig = computed(() => tabsConfig.find((c) => c.value === tab.va
                 <td class="px-4 py-3 text-gray-400">{{ getInvoicePrimaryDate(item) }}</td>
                 <td v-if="!isReturnedTab" class="whitespace-nowrap px-4 py-3 text-gray-300">{{ item.presenter_full_name ?? '----' }}</td>
                 <td v-if="!isReturnedTab" class="px-4 py-3 text-gray-300">{{ numberWithSeparator(item.discount_price + item.other_price) }}</td>
-                <td class="px-4 py-3 text-gray-200 font-medium">{{ numberWithSeparator(item.total_price) }} {{ item.currency_name }}</td>
+                <td class="px-4 py-3 text-gray-200 font-medium">{{ numberWithSeparator(item.total_price) }} تومان</td>
                 <td class="px-4 py-3">
                   <NuxtLink :to="invoiceLink(item)" class="inline-flex items-center gap-1.5 text-purple-300 hover:text-purple-200 transition-colors">
                     <Eye class="w-4 h-4" />

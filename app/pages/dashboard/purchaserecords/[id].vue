@@ -407,25 +407,25 @@ const isAllReturned = computed(() => {
         <div class="space-y-2">
           <div class="flex justify-between px-1">
             <p>{{ t('order_value') }}:</p>
-            <strong class="text-white">{{ numberWithSeparator(Invoice.impure_price) }} {{ t(Invoice.currency_symbol) }}</strong>
+            <strong class="text-white">{{ numberWithSeparator(Invoice.impure_price) }} تومان</strong>
           </div>
           <template v-if="!Invoice.status_text?.includes('return')">
             <div class="flex justify-between px-1">
               <p>تخفیف پایه :</p>
-              <strong class="text-white">{{ numberWithSeparator(Invoice.discount_price) }} {{ t(Invoice.currency_symbol) }}</strong>
+              <strong class="text-white">{{ numberWithSeparator(Invoice.discount_price) }} تومان</strong>
             </div>
             <div class="flex justify-between px-1">
               <p>کد تخفیف :</p>
-              <strong class="text-white">{{ numberWithSeparator(Invoice.other_price ?? 0) }} {{ t(Invoice.currency_symbol) }}</strong>
+              <strong class="text-white">{{ numberWithSeparator(Invoice.other_price ?? 0) }} تومان</strong>
             </div>
               <div class="flex justify-between px-1">
               <p>عوارض و مالیات :</p>
-              <strong class="text-white">{{ numberWithSeparator(Invoice.tax_price ?? 0) }} {{ t(Invoice.currency_symbol) }}</strong>
+              <strong class="text-white">{{ numberWithSeparator(Invoice.tax_price ?? 0) }} تومان</strong>
             </div>
           </template>
           <div class="flex justify-between px-1">
             <p>{{ Invoice.status_text?.includes('return') ? 'مبلغ کل قابل استرداد' : t('total_price') }} :</p>
-            <strong class="text-white">{{ numberWithSeparator(Invoice.total_price) }} {{ t(Invoice.currency_symbol) }}</strong>
+            <strong class="text-white">{{ numberWithSeparator(Invoice.total_price) }} تومان</strong>
           </div>
         </div>
       </div>
@@ -451,7 +451,7 @@ const isAllReturned = computed(() => {
               <td class="px-4 py-3 text-gray-300">{{ item.wallet_transactions_id }}</td>
               <td class="px-4 py-3 text-gray-300">{{ t(item.kind_text) }}</td>
               <td class="px-4 py-3 text-gray-400">{{ formatJalali(item.document_date) }}</td>
-              <td class="px-4 py-3 text-gray-200">{{ numberWithSeparator(parseInt(item.amount)) }} {{ item.currency_name }}</td>
+              <td class="px-4 py-3 text-gray-200">{{ numberWithSeparator(parseInt(item.amount)) }} تومان</td>
               <td class="px-4 py-3">
                 <span class="rounded-full px-2.5 py-0.5 text-xs font-medium border" :class="getStatusBadgeClass(item.status)">{{ t(item.status_text) }}</span>
               </td>

@@ -112,10 +112,12 @@ async function submitWithdraw() {
 const activeFilter = ref('all')
 const searchQuery = ref('')
 
+// مقادیر id دقیقاً باید با kind_text واقعیِ برگشتی از wallets/showTransactions یکی باشند
+// (deposit / purchase / withdraw / transfer / award)
 const filters = [
   { id: 'all', label: 'همه' },
-  { id: 'topup', label: 'واریز' },
-  // { id: 'usage', label: 'مصرف' },
+  { id: 'deposit', label: 'واریز' },
+  // { id: 'purchase', label: 'مصرف' },
   { id: 'withdraw', label: 'برداشت' }
 ]
 

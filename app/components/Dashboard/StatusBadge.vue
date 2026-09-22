@@ -15,7 +15,13 @@ const statusMap = {
   closed: { label: 'بسته‌شده', class: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
   used: { label: 'استفاده‌شده', class: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
   inactive: { label: 'غیرفعال', class: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
-  incoming: { label: 'ورودی', class: 'bg-blue-500/10 text-blue-400 border-blue-500/30' }
+  incoming: { label: 'ورودی', class: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
+  // وضعیت‌های واقعی تراکنش‌های کیف‌پول (wallets/showTransactions → status_text)
+  confirmed: { label: 'تأیید شده', class: 'bg-green-500/10 text-green-400 border-green-500/30' },
+  canceled: { label: 'لغو شده', class: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
+  cancelled: { label: 'لغو شده', class: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
+  rejected: { label: 'رد شده', class: 'bg-red-500/10 text-red-400 border-red-500/30' },
+  error: { label: 'خطا', class: 'bg-red-500/10 text-red-400 border-red-500/30' }
 }
 </script>
 

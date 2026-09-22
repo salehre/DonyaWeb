@@ -89,12 +89,23 @@ export function useWallet(currencyId = 1) {
     if (transactionsLoaded.value && !force) return
     transactionsPending.value = true
     try {
-      const { data } = await useFetch(`${config.public.apiBase}/wallets/showTransactions`, {
+      const response = await $fetch(`${config.public.apiBase}/wallets/showTransactions`, {
         method: 'POST',
-        headers
+        headers: headers.value,
+        body: {}
       })
-      rawTransactions.value = data.value?.WalletTransactions ?? []
+
+      if (!Array.isArray(response?.WalletTransactions)) {
+        console.warn('wallets/showTransactions unexpected response:', response)
+      }
+
+      rawTransactions.value = response?.WalletTransactions ?? []
       transactionsLoaded.value = true
+    } catch (error) {
+      console.error('Wallet transactions fetch error:', error, error?.data)
+      if (import.meta.client) {
+        toast.error('دریافت تاریخچه تراکنش‌ها ناموفق بود.')
+      }
     } finally {
       transactionsPending.value = false
     }
@@ -116,25 +127,28 @@ export function useWallet(currencyId = 1) {
 
   // ثبت درخواست برداشت وجه از کیف‌پول و رفرش خودکار موجودی/تاریخچه
   async function requestWithdraw(amount, destination) {
-    const { data, error } = await useFetch(
-      `${config.public.apiBase}/wallets/createTransactionsRequest`,
-      {
+    let response
+    try {
+      response = await $fetch(`${config.public.apiBase}/wallets/createTransactionsRequest`, {
         method: 'POST',
-        headers,
+        headers: headers.value,
         body: {
           amount,
           dynamic_column_01: destination,
           kind: 2
         }
-      }
-    )
+      })
+    } catch (error) {
+      console.error('Wallet withdraw request error:', error, error?.data)
+      throw new Error(error?.data?.message || error?.data?.msg || 'ثبت درخواست برداشت ناموفق بود.')
+    }
 
-    if (error.value || data.value?.code !== 2000) {
-      throw new Error(data.value?.message || 'ثبت درخواست برداشت ناموفق بود.')
+    if (response?.code !== 2000) {
+      throw new Error(response?.message || response?.msg || 'ثبت درخواست برداشت ناموفق بود.')
     }
 
     await refresh()
-    return data.value
+    return response
   }
 
   const depositPending = useState('wallet-deposit-pending', () => false)
