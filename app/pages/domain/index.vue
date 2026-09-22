@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import {
   Search, Check, Globe, ShieldCheck, Lock, RotateCcw, Loader2,
   ArrowLeftRight, Settings2, Network, FolderKey, ChevronDown
@@ -13,8 +13,16 @@ useHead({
 const config = useRuntimeConfig()
 const apiHeaders = useApiHeaders()
 const DOMAIN_CATEGORY_ID = '1' // دسته‌ی "پسوند دامنه" در پنل دنیاوب
+const POPULAR_TLD_ORDER = ['.com', '.ir', '.net', '.org', '.io', '.co']
 const tlds = ref([])
 const isLoadingPrices = ref(true)
+
+// فقط برای بخش «قیمت پسوندهای محبوب» — همون ۶ تای قبلی، به همون ترتیب
+const popularTlds = computed(() =>
+  POPULAR_TLD_ORDER
+    .map((ext) => tlds.value.find((t) => t.ext === ext))
+    .filter(Boolean)
+)
 
 function displayPrice(tld) {
   if (!tld || tld.price === null || tld.price === undefined) {
@@ -32,7 +40,7 @@ async function fetchTldPrices() {
       body: {
         allowSale: 0,
         amount: 100,
-        direction: 'desc',
+        direction: 'asc',
         filters: [],
         order: 'order',
         page: 1,
@@ -61,7 +69,7 @@ async function fetchTldPrices() {
           id: product.id,
           ext: product.title_fa, // مثل ".com" — همون‌طور که تو پنل ثبت شده
           slug: product.slug_fa,
-          price: rawPrice !== null ? Number(rawPrice) : null,
+          price: rawPrice !== null ? Number(rawPrice) * 235000 : null,
           currencyName: lastPrice?.currency_name || null,
           currencySymbol: lastPrice?.currency_symbol || null,
           sellable: Boolean(product.allow_sale) && product.status === 1
@@ -190,11 +198,11 @@ function toggleFaq(index) {
           </button>
         </form>
 
-        <div class="flex flex-wrap justify-center gap-4 mt-4 text-sm text-gray-400">
+        <!-- <div class="flex flex-wrap justify-center gap-4 mt-4 text-sm text-gray-400">
           <span v-for="t in tlds" :key="t.id" class="flex items-center gap-1">
             <Check class="w-4 h-4 text-green-400" /> {{ t.ext }} {{ displayPrice(t) }}
           </span>
-        </div>
+        </div> -->
       </div>
 
       <!-- Search Results -->
@@ -258,10 +266,10 @@ function toggleFaq(index) {
       </div>
 
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-        <div v-for="t in tlds" :key="t.id" class="glass-card rounded-2xl p-6 text-center hover-lift">
+        <div v-for="t in popularTlds" :key="t.id" class="glass-card rounded-2xl p-6 text-center hover-lift">
           <div class="text-2xl font-bold text-purple-400 mb-2" dir="ltr">{{ t.ext }}</div>
           <div class="text-gray-300 text-sm">
-            {{ displayPrice(t) }}
+            {{ displayPrice(t) }} تومان
           </div>
         </div>
       </div>
