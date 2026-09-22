@@ -29,7 +29,7 @@ const transactions = computed(() =>
 
 const toast = useToast()
 
-const quickAmounts = [100000, 200000, 500000, 1000000]
+const quickAmounts = [100000, 500000, 1000000, 2000000]
 const amount = ref(200000)
 const customAmount = ref('')
 const method = ref('gateway')
@@ -141,7 +141,7 @@ async function handleTopup() {
             @click="method = 'card'"
           >
             <CreditCard class="w-4 h-4" />
-            کارت بانکی
+            فیش واریز
           </button>
         </div>
       </div>

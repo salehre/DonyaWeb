@@ -346,12 +346,16 @@ async function submitOrder() {
                   class="flex items-start gap-3 rounded-xl border-2 p-4 cursor-pointer transition-all"
                   :class="selectedAddons.includes(a.id) ? 'border-purple-500 bg-purple-500/10' : 'border-white/10 hover:border-purple-500/40'"
                 >
-                  <input
-                    type="checkbox"
-                    class="mt-1 w-4 h-4 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0"
-                    :checked="selectedAddons.includes(a.id)"
-                    @change="toggleAddon(a.id)"
-                  >
+                  <span class="relative inline-flex w-5 h-5 shrink-0 mt-0.5">
+                    <input
+                      type="checkbox"
+                      class="peer sr-only"
+                      :checked="selectedAddons.includes(a.id)"
+                      @change="toggleAddon(a.id)"
+                    >
+                    <span class="absolute inset-0 rounded-lg border border-white/20 bg-white/10 transition-all duration-200 peer-checked:border-transparent peer-checked:bg-linear-to-br peer-checked:from-purple-600 peer-checked:to-blue-600 peer-checked:shadow-lg peer-checked:shadow-purple-500/30 peer-focus-visible:ring-4 peer-focus-visible:ring-purple-500/30" />
+                    <Check class="absolute inset-0 m-auto w-4 h-4 text-white pointer-events-none scale-50 opacity-0 transition-all duration-200 peer-checked:scale-100 peer-checked:opacity-100" />
+                  </span>
                   <div class="flex-1">
                     <div class="flex items-center justify-between gap-2">
                       <span class="font-medium text-sm">{{ a.label }}</span>
@@ -367,11 +371,11 @@ async function submitOrder() {
                   <span class="flex items-center gap-2 text-sm font-medium">
                     <RotateCcw class="w-4 h-4 text-gray-400" /> تمدید خودکار پیش از انقضا
                   </span>
-                  <input
-                    v-model="autoRenew"
-                    type="checkbox"
-                    class="w-4 h-4 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0"
-                  >
+                  <span class="relative inline-flex w-6 h-6 shrink-0">
+                    <input v-model="autoRenew" type="checkbox" class="peer sr-only">
+                    <span class="absolute inset-0 rounded-lg border border-white/20 bg-white/10 transition-all duration-200 peer-checked:border-transparent peer-checked:bg-linear-to-br peer-checked:from-purple-600 peer-checked:to-blue-600 peer-checked:shadow-lg peer-checked:shadow-purple-500/30 peer-focus-visible:ring-4 peer-focus-visible:ring-purple-500/30" />
+                    <Check class="absolute inset-0 m-auto w-4 h-4 text-white pointer-events-none scale-50 opacity-0 transition-all duration-200 peer-checked:scale-100 peer-checked:opacity-100" />
+                  </span>
                 </label>
               </div>
             </div>
@@ -492,11 +496,11 @@ async function submitOrder() {
 
             <!-- Terms -->
             <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">
-              <input
-                v-model="acceptTerms"
-                type="checkbox"
-                class="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0"
-              >
+              <span class="relative inline-flex w-6 h-6 shrink-0 mt-0.5">
+                <input v-model="acceptTerms" type="checkbox" class="peer sr-only">
+                <span class="absolute inset-0 rounded-lg border border-white/20 bg-white/10 transition-all duration-200 peer-checked:border-transparent peer-checked:bg-linear-to-br peer-checked:from-purple-600 peer-checked:to-blue-600 peer-checked:shadow-lg peer-checked:shadow-purple-500/30 peer-focus-visible:ring-4 peer-focus-visible:ring-purple-500/30" />
+                <Check class="absolute inset-0 m-auto w-4 h-4 text-white pointer-events-none scale-50 opacity-0 transition-all duration-200 peer-checked:scale-100 peer-checked:opacity-100" />
+              </span>
               <span>
                 <NuxtLink to="/terms" class="text-purple-300 hover:text-purple-200 transition-colors">قوانین و مقررات</NuxtLink>
                 استفاده از خدمات دنیاوب را مطالعه کرده‌ام و می‌پذیرم
@@ -527,7 +531,7 @@ async function submitOrder() {
             </ul>
 
             <!-- Coupon -->
-            <div class="border-t border-white/10 pt-4 mb-4">
+            <!-- <div class="border-t border-white/10 pt-4 mb-4">
               <div v-if="!couponApplied" class="flex gap-2">
                 <div class="relative flex-1">
                   <Tag class="w-4 h-4 text-gray-400 absolute top-1/2 -translate-y-1/2 right-3" />
@@ -552,7 +556,7 @@ async function submitOrder() {
                 <button type="button" @click="removeCoupon"><X class="w-4 h-4" /></button>
               </div>
               <p v-if="couponError" class="text-red-400 text-xs mt-2">{{ couponError }}</p>
-            </div>
+            </div> -->
 
             <!-- Price breakdown -->
             <div class="border-t border-white/10 pt-4 space-y-2 text-sm">
@@ -579,19 +583,8 @@ async function submitOrder() {
 
             <button
               type="button"
-              :disabled="isSubmitting"
-              class="w-full py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              @click="submitOrder"
-            >
-              <Loader2 v-if="isSubmitting" class="w-4 h-4 animate-spin" />
-              تماس بگیرید
-              <!-- {{ isSubmitting ? 'در حال پردازش...' : 'پرداخت و ثبت دامنه' }} -->
-            </button>
-
-            <button
-              type="button"
               :disabled="isAddingToCart"
-              class="w-full mt-3 py-3 rounded-xl glass border border-white/10 hover:border-purple-500/40 transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              class="w-full py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               @click="addToCart"
             >
               <Loader2 v-if="isAddingToCart" class="w-4 h-4 animate-spin" />

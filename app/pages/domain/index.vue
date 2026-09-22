@@ -94,6 +94,7 @@ const isSearching = ref(false)
 const results = ref(null)
 const toast = useToast()
 let lastPersianToastAt = 0
+const DEFAULT_SEARCH_EXTENSIONS = new Set(['.com', '.ir'])
 
 function removePersianCharacters(value) {
   return value.replace(/[\u0600-\u06FF\u0750-\u077F]/g, '')
@@ -136,12 +137,14 @@ function searchDomain() {
         ? [{ domain: raw, available: tld.sellable, price: displayPrice(tld), notOffered: false }]
         : [{ domain: raw, available: false, price: null, notOffered: true }]
     } else {
-      results.value = tlds.value.map((t) => ({
+      results.value = tlds.value
+        .filter((t) => DEFAULT_SEARCH_EXTENSIONS.has(t.ext.toLowerCase()))
+        .map((t) => ({
         domain: `${raw}${t.ext}`,
         available: t.sellable,
         price: displayPrice(t),
         notOffered: false
-      }))
+        }))
     }
     isSearching.value = false
   }, 700)
@@ -221,7 +224,7 @@ function toggleFaq(index) {
             id="domain-search"
             v-model="query"
             type="text"
-            dir="ltr"
+            dir="rtl"
             placeholder="نام دامنه مورد نظر خود را وارد کنید..."
             class="flex-1 px-6 py-4 rounded-xl input-glass text-white placeholder-gray-400 text-lg"
             @input="handleDomainInput"
@@ -252,7 +255,7 @@ function toggleFaq(index) {
         aria-busy="true"
       >
         <div
-          v-for="index in 4"
+          v-for="index in 2"
           :key="index"
           class="glass-card rounded-2xl px-6 py-4 flex items-center justify-between animate-pulse"
         >
@@ -268,8 +271,7 @@ function toggleFaq(index) {
       </div>
 
       <!-- Search Results -->
-      <Transition name="fade">
-        <div v-if="results" class="max-w-3xl mx-auto grid gap-3 mt-8">
+      <div v-if="!isSearching && results" class="max-w-3xl mx-auto grid gap-3 mt-8">
           <div
             v-for="r in results"
             :key="r.domain"
@@ -294,8 +296,7 @@ function toggleFaq(index) {
               </NuxtLink>
             </div>
           </div>
-        </div>
-      </Transition>
+      </div>
     </section>
 
     <!-- Why register with us -->

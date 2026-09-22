@@ -3,7 +3,7 @@ import { reactive, ref, computed, watch, onMounted } from 'vue'
 import {
   Wallet, Plus, ArrowDownLeft, ArrowUpRight, Landmark, Gift, FileText,
   Clock, TrendingUp, TrendingDown, Search, X, Loader2, ShieldCheck, Copy,
-  Pencil
+  Pencil, CreditCard
 } from 'lucide-vue-next'
 
 const { toJalaliDate } = useJalaliDate()
@@ -40,9 +40,9 @@ const toast = useToast()
 const pendingCount = computed(() => pendingItems.value.length)
 
 const statCards = computed(() => [
-  { icon: Wallet, label: 'موجودی قابل استفاده', value: `${formatNumber(balance.value)} تومان`, color: 'from-purple-500 to-blue-600' },
+  // { icon: Wallet, label: 'موجودی قابل استفاده', value: `${formatNumber(balance.value)} تومان`, color: 'from-purple-500 to-blue-600' },
   { icon: TrendingUp, label: 'مجموع واریزی‌ها', value: `${formatNumber(totalDeposited.value)} تومان`, color: 'from-green-500 to-emerald-600' },
-  { icon: TrendingDown, label: 'مجموع مصرف', value: `${formatNumber(totalSpent.value)} تومان`, color: 'from-orange-500 to-red-500' },
+  { icon: TrendingDown, label: 'مجموع خرید', value: `${formatNumber(totalSpent.value)} تومان`, color: 'from-orange-500 to-red-500' },
   { icon: Clock, label: 'در انتظار تسویه', value: `${formatNumber(pendingCount.value)} تراکنش`, color: 'from-yellow-500 to-amber-600' }
 ])
 
@@ -117,8 +117,8 @@ const searchQuery = ref('')
 const filters = [
   { id: 'all', label: 'همه' },
   { id: 'deposit', label: 'واریز' },
-  // { id: 'purchase', label: 'مصرف' },
-  { id: 'withdraw', label: 'برداشت' }
+  { id: 'purchase', label: 'خرید' },
+  // { id: 'withdraw', label: 'برداشت' }
 ]
 
 const typeMeta = {
@@ -137,7 +137,7 @@ const typeMeta = {
   withdraw: {
     label: 'برداشت',
     color: 'text-orange-400',
-    icon: Landmark,
+    icon: CreditCard,
   },
 
   transfer: {
@@ -167,6 +167,11 @@ const filteredHistory = computed(() => {
         t.method.toLowerCase().includes(q)
 
       return matchesFilter && matchesSearch
+    })
+    .sort((first, second) => {
+      const firstTime = new Date(String(first.date || '').replace(' ', 'T')).getTime()
+      const secondTime = new Date(String(second.date || '').replace(' ', 'T')).getTime()
+      return secondTime - firstTime
     })
 })
 
@@ -318,7 +323,7 @@ function isValidSheba(sheba) {
     </div>
 
     <!-- آمار کلی -->
-    <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-5">
+    <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
       <DashboardStatCard
         v-for="card in statCards"
         :key="card.label"
@@ -362,12 +367,12 @@ function isValidSheba(sheba) {
           <h2 class="text-lg font-bold">تاریخچه تراکنش‌ها</h2>
           <div class="flex items-center gap-3">
             <div class="relative">
-              <Search class="w-4 h-4 text-gray-500 absolute top-1/2 -translate-y-1/2 right-3" />
+              <Search class="w-4 h-4 text-gray-400 absolute top-1/2 -translate-y-1/2 right-3" />
               <input
                 v-model="searchQuery"
                 type="text"
                 placeholder="جستجوی شناسه یا روش..."
-                class="w-full sm:w-56 pr-9 pl-3 py-2 rounded-lg input-glass text-sm text-white placeholder-gray-500 outline-none"
+                class="w-full sm:w-56 pr-9 pl-3 py-2 rounded-lg input-glass text-sm text-white placeholder-gray-400 outline-none"
               >
             </div>
           </div>
@@ -444,7 +449,7 @@ function isValidSheba(sheba) {
                 </td>
 
                 <td class="px-6 py-4 text-gray-400">
-                  {{ t.date }}
+                  {{ toJalaliDate(t.date, true) }}
                 </td>
 
                 <td class="px-6 py-4">

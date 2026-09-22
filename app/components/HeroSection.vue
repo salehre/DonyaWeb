@@ -45,7 +45,7 @@ function searchDomain() {
           <input
             v-model="domainQuery"
             type="text"
-            dir="ltr"
+            dir="rtl"
             placeholder="نام دامنه مورد نظر خود را وارد کنید..."
             class="flex-1 px-6 py-4 rounded-xl input-glass text-white placeholder-gray-400 outline-none text-lg text-right"
             @keyup.enter="searchDomain"
@@ -59,11 +59,11 @@ function searchDomain() {
             جستجو دامنه
           </button>
         </div>
-        <div class="flex justify-center gap-4 mt-4 text-sm text-gray-400">
+        <!-- <div class="flex justify-center gap-4 mt-4 text-sm text-gray-400">
           <span v-for="d in domainPrices" :key="d.tld" class="flex items-center gap-1" dir="ltr">
             <Check class="w-4 h-4 text-green-400" /> {{ d.tld }} {{ d.price }}
           </span>
-        </div>
+        </div> -->
       </div>
 
       <!-- Stats -->

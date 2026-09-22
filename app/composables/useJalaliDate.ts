@@ -23,8 +23,9 @@ export function useJalaliDate() {
 
     const hour = String(d.getHours()).padStart(2, '0')
     const minute = String(d.getMinutes()).padStart(2, '0')
+    const time = `${hour}:${minute}`.replace(/[0-9]/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)])
 
-    return `${datePart} - ${hour}:${minute}`
+    return `${datePart} - ${time}`
   }
 
   return {

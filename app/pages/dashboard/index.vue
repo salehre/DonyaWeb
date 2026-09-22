@@ -104,6 +104,32 @@ const recentTickets = computed(() =>
 
 <template>
   <div class="space-y-8">
+    <div v-if="pending" class="space-y-8 animate-pulse" aria-label="در حال بارگذاری داشبورد" aria-busy="true">
+      <div class="glass-card rounded-3xl p-6 sm:p-8 space-y-3">
+        <div class="h-7 w-64 max-w-full rounded-lg bg-white/10" />
+        <div class="h-4 w-80 max-w-full rounded bg-white/10" />
+      </div>
+
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div v-for="index in 4" :key="index" class="glass-card rounded-2xl p-5 space-y-4">
+          <div class="h-11 w-11 rounded-xl bg-white/10" />
+          <div class="h-4 w-24 rounded bg-white/10" />
+          <div class="h-7 w-16 rounded bg-white/10" />
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-6">
+        <div v-for="panel in 2" :key="panel" class="glass-card rounded-3xl p-6 space-y-5">
+          <div class="flex items-center justify-between">
+            <div class="h-5 w-32 rounded bg-white/10" />
+            <div class="h-4 w-20 rounded bg-white/10" />
+          </div>
+          <div v-for="row in 3" :key="row" class="h-14 rounded-xl bg-white/5" />
+        </div>
+      </div>
+    </div>
+
+    <template v-else>
     <!-- Welcome -->
     <div class="glass-card rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
       <div>
@@ -210,5 +236,6 @@ const recentTickets = computed(() =>
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>

@@ -87,7 +87,7 @@ function confirmManual() {
           <input
             v-model="query"
             type="text"
-            dir="ltr"
+            dir="rtl"
             placeholder="نام دامنه مورد نظر خود را وارد کنید..."
             class="w-full px-6 py-4 rounded-xl input-glass text-white placeholder-gray-400 outline-none text-lg text-right"
             @keyup.enter="checkDomain"

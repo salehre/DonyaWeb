@@ -29,8 +29,8 @@ export function useWallet(currencyId = 1) {
   )
   const balance = computed(() => Number(wallet.value?.balance ?? 0))
 
-  // تاریخچه‌ی تراکنش‌ها با قالب یکسان، برای استفاده مستقیم در جدول‌ها/فیلترها
-  const transactions = computed(() =>
+  // تاریخچه‌ی خام همه‌ی تراکنش‌ها (همه‌ی وضعیت‌ها) با قالب یکسان
+  const allTransactions = computed(() =>
     rawTransactions.value.map((t) => ({
       id: t.wallet_transactions_id,
       type: t.kind_text,
@@ -38,11 +38,17 @@ export function useWallet(currencyId = 1) {
       method: t.payment_procedure_title || t.gateway_title || '-',
       date: t.document_date,
       status: t.status_text,
+      statusCode: Number(t.status),
       trackingCode: t.tracking_code
     }))
   )
 
-  const pendingItems = computed(() => transactions.value.filter((t) => t.status === 'pending'))
+  // تاریخچه‌ی اصلی: فقط تراکنش‌های تأیید‌شده (status === 2)
+  const transactions = computed(() => allTransactions.value.filter((t) => t.statusCode === 2))
+
+  // بقیه‌ی وضعیت‌ها (در انتظار / لغو‌شده / رد‌شده / خطا) → بخش «درخواست‌های در انتظار»
+  const pendingItems = computed(() => allTransactions.value.filter((t) => t.statusCode !== 2))
+
   const totalDeposited = computed(() =>
     transactions.value
       .filter((t) => t.type === 'deposit')
@@ -92,8 +98,16 @@ export function useWallet(currencyId = 1) {
       const response = await $fetch(`${config.public.apiBase}/wallets/showTransactions`, {
         method: 'POST',
         headers: headers.value,
-        body: {}
+        body: { currency_id: currencyId }
       })
+
+      if (response?.success === false || response?.code === 2001) {
+        // کیف‌پولی برای این ارز هنوز برای کاربر ساخته نشده (wallet_not_found)؛
+        // یعنی کاربر هنوز هیچ تراکنشی نداشته — خطا نیست، فقط لیست خالیه.
+        rawTransactions.value = []
+        transactionsLoaded.value = true
+        return
+      }
 
       if (!Array.isArray(response?.WalletTransactions)) {
         console.warn('wallets/showTransactions unexpected response:', response)
