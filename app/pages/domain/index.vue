@@ -39,7 +39,7 @@ async function fetchTldPrices() {
       headers: apiHeaders.value,
       body: {
         allowSale: 0,
-        amount: 100,
+        amount: 1000,
         direction: 'asc',
         filters: [],
         order: 'order',
@@ -92,20 +92,57 @@ const route = useRoute()
 const query = ref(typeof route.query.domain === 'string' ? route.query.domain : '')
 const isSearching = ref(false)
 const results = ref(null)
+const toast = useToast()
+let lastPersianToastAt = 0
+
+function removePersianCharacters(value) {
+  return value.replace(/[\u0600-\u06FF\u0750-\u077F]/g, '')
+}
+
+function handleDomainInput() {
+  if (/[\u0600-\u06FF\u0750-\u077F]/.test(query.value)) {
+    const now = Date.now()
+    if (now - lastPersianToastAt >= 4000) {
+      toast.error('لطفاً نام دامنه را با حروف انگلیسی وارد کنید')
+      lastPersianToastAt = now
+    }
+    query.value = removePersianCharacters(query.value)
+  }
+}
+
+function extractTypedExt(name) {
+  const idx = name.lastIndexOf('.')
+  if (idx <= 0 || idx === name.length - 1) return null
+  return name.slice(idx) // مثل ".com"
+}
 
 function searchDomain() {
-  const name = query.value.trim().replace(/\s+/g, '-')
-  if (!name) return
+  const raw = query.value.trim().replace(/\s+/g, '-')
+  if (!raw) return
+  if (/[^a-zA-Z0-9.\-]/.test(raw)) {
+    toast.error('نام دامنه فقط می‌تواند شامل حروف انگلیسی، عدد و خط تیره باشد')
+    return
+  }
 
   isSearching.value = true
   results.value = null
 
   setTimeout(() => {
-    results.value = tlds.value.map((t) => ({
-      domain: `${name}${t.ext}`,
-      available: t.sellable,
-      price: displayPrice(t)
-    }))
+    const typedExt = extractTypedExt(raw)
+
+    if (typedExt) {
+      const tld = tlds.value.find((t) => t.ext.toLowerCase() === typedExt.toLowerCase())
+      results.value = tld
+        ? [{ domain: raw, available: tld.sellable, price: displayPrice(tld), notOffered: false }]
+        : [{ domain: raw, available: false, price: null, notOffered: true }]
+    } else {
+      results.value = tlds.value.map((t) => ({
+        domain: `${raw}${t.ext}`,
+        available: t.sellable,
+        price: displayPrice(t),
+        notOffered: false
+      }))
+    }
     isSearching.value = false
   }, 700)
 }
@@ -184,8 +221,10 @@ function toggleFaq(index) {
             id="domain-search"
             v-model="query"
             type="text"
+            dir="ltr"
             placeholder="نام دامنه مورد نظر خود را وارد کنید..."
             class="flex-1 px-6 py-4 rounded-xl input-glass text-white placeholder-gray-400 text-lg"
+            @input="handleDomainInput"
           >
           <button
             type="submit"
@@ -205,6 +244,29 @@ function toggleFaq(index) {
         </div> -->
       </div>
 
+      <!-- Search Results Skeleton -->
+      <div
+        v-if="isSearching"
+        class="max-w-3xl mx-auto grid gap-3 mt-8"
+        aria-label="در حال دریافت نتایج جستجو"
+        aria-busy="true"
+      >
+        <div
+          v-for="index in 4"
+          :key="index"
+          class="glass-card rounded-2xl px-6 py-4 flex items-center justify-between animate-pulse"
+        >
+          <div class="flex items-center gap-3 flex-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-white/10 shrink-0" />
+            <span class="h-5 w-40 max-w-[55%] rounded bg-white/10" />
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="h-4 w-24 rounded bg-white/10 hidden sm:block" />
+            <span class="h-9 w-20 rounded-lg bg-white/10" />
+          </div>
+        </div>
+      </div>
+
       <!-- Search Results -->
       <Transition name="fade">
         <div v-if="results" class="max-w-3xl mx-auto grid gap-3 mt-8">
@@ -220,9 +282,9 @@ function toggleFaq(index) {
 
             <div class="flex items-center gap-4">
               <span class="text-sm" :class="r.available ? 'text-green-400' : 'text-red-400'">
-                {{ r.available ? 'در دسترس' : 'قبلاً ثبت شده' }}
+                {{ r.available ? 'در دسترس' : (r.notOffered ? 'این پسوند در دنیاوب موجود نیست' : 'قبلاً ثبت شده') }}
               </span>
-              <span v-if="r.available" class="text-gray-300 text-sm hidden sm:block">{{ r.price }}</span>
+              <span v-if="r.available" class="text-gray-300 text-sm hidden sm:block">{{ r.price }} تومان</span>
               <NuxtLink
                 v-if="r.available"
                 :to="`/checkout-domain?domain=${r.domain}`"

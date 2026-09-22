@@ -15,6 +15,10 @@ const props = defineProps({
   placeholder: {
     type: String,
     default: 'انتخاب کنید'
+  },
+  dir: {
+    type: String,
+    default: 'rtl'
   }
 })
 
@@ -106,7 +110,9 @@ onBeforeUnmount(() => {
     <button
       ref="triggerEl"
       type="button"
-      class="input-glass w-full rounded-xl px-4 py-3 flex items-center justify-between gap-2 text-right"
+      class="input-glass w-full rounded-xl px-4 py-3 flex items-center justify-between gap-2"
+      :class="props.dir === 'ltr' ? 'text-left' : 'text-right'"
+      :dir="props.dir"
       :aria-expanded="open"
       @click="toggle"
     >
@@ -133,11 +139,15 @@ onBeforeUnmount(() => {
           class="z-50 origin-top"
           :style="panelStyle"
         >
-          <ul class="glass-strong bg-[#12305c]! rounded-xl p-1.5 max-h-60 overflow-y-auto scrollbar-thin border border-white/10 shadow-2xl shadow-black/40 space-y-0.5">
+          <ul
+            class="glass-strong bg-[#12305c]! rounded-xl p-1.5 max-h-60 overflow-y-auto scrollbar-thin border border-white/10 shadow-2xl shadow-black/40 space-y-0.5"
+            :dir="props.dir"
+          >
             <li v-if="!hasOptions">
               <button
                 type="button"
-                class="w-full cursor-default px-3.5 py-2.5 rounded-lg text-sm text-right text-gray-400"
+                class="w-full cursor-default px-3.5 py-2.5 rounded-lg text-sm text-gray-400"
+                :class="props.dir === 'ltr' ? 'text-left' : 'text-right'"
                 disabled
               >
                 هیچ ایتمی وجود ندارد
@@ -146,10 +156,13 @@ onBeforeUnmount(() => {
             <li v-for="opt in normalizedOptions" :key="opt.value">
               <button
                 type="button"
-                class="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-lg text-sm text-right transition-colors"
-                :class="opt.value === modelValue
-                  ? 'bg-linear-to-r from-purple-600 to-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-white/10 hover:text-white'"
+                class="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-lg text-sm transition-colors"
+                :class="[
+                  props.dir === 'ltr' ? 'text-left' : 'text-right',
+                  opt.value === modelValue
+                    ? 'bg-linear-to-r from-purple-600 to-blue-600 text-white'
+                    : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                ]"
                 @click="select(opt)"
               >
                 <span>{{ opt.label }}</span>

@@ -14,26 +14,66 @@ const route = useRoute()
 const router = useRouter()
 const { createOrder, payWithWallet, hasEnoughWalletBalance } = useCheckout()
 const { addItem: addToCartItem } = useCart()
+const config = useRuntimeConfig()
+const apiHeaders = useApiHeaders()
+const DOMAIN_CATEGORY_ID = '1'
+const DOMAIN_PRICE_MULTIPLIER = 235000
 
 // --- TLD price table (annual price) ---
-const tlds = {
-  '.com': "تماس بگیرید",
-  '.ir': "تماس بگیرید",
-  '.net': "تماس بگیرید",
-  '.org': "تماس بگیرید",
-  '.io': "تماس بگیرید",
-  '.co': "تماس بگیرید"
+const tlds = ref({})
+const isLoadingPrice = ref(true)
+
+async function fetchDomainPrices() {
+  try {
+    const response = await $fetch(`${config.public.apiBase}/products/indexLite`, {
+      method: 'POST',
+      headers: apiHeaders.value,
+      body: {
+        allowSale: 0,
+        amount: 1000,
+        direction: 'asc',
+        filters: [],
+        order: 'order',
+        page: 1,
+        category: DOMAIN_CATEGORY_ID,
+        typeCode: 0,
+        withAttrib: false
+      }
+    })
+
+    if (Number(response?.code) !== 2000) return
+
+    const prices = {}
+    for (const product of response.Products || []) {
+      const ext = String(product.title_fa || '').trim().toLowerCase()
+      if (!ext || ext in prices) continue
+
+      const lastPrice = product.product_last_prices
+      const rawPrice = product.active_price ?? lastPrice?.price ?? product.final_price ?? product.price
+      prices[ext] = rawPrice === null || rawPrice === undefined
+        ? null
+        : Number(rawPrice) * DOMAIN_PRICE_MULTIPLIER
+    }
+    tlds.value = prices
+  } catch (error) {
+    console.error('[Domain checkout] خطا در دریافت قیمت دامنه‌ها:', error)
+  } finally {
+    isLoadingPrice.value = false
+  }
 }
 
-const tldOptions = computed(() => Object.entries(tlds).map(([value, price]) => ({
+await fetchDomainPrices()
+
+const tldOptions = computed(() => Object.entries(tlds.value).map(([value, price]) => ({
   value,
-  label: `${value} (${formatPrice(price)} تومان)`
+  label: value
 })))
 
 function splitDomain(full) {
-  const match = Object.keys(tlds)
+  const normalizedFull = full.toLowerCase()
+  const match = Object.keys(tlds.value)
     .sort((a, b) => b.length - a.length)
-    .find((ext) => full.endsWith(ext))
+    .find((ext) => normalizedFull.endsWith(ext))
   if (match) return { name: full.slice(0, full.length - match.length), tld: match }
   return { name: full, tld: '.com' }
 }
@@ -43,7 +83,7 @@ const initial = splitDomain(queryDomain || 'my-domain.com')
 
 const domainName = ref(initial.name)
 const selectedTld = ref(initial.tld)
-const annualPrice = computed(() => tlds[selectedTld.value])
+const annualPrice = computed(() => tlds.value[selectedTld.value])
 const fullDomain = computed(() => `${domainName.value}${selectedTld.value}`)
 
 // --- Registration period ---
@@ -111,14 +151,14 @@ const acceptTerms = ref(false)
 
 // --- Pricing ---
 function formatPrice(n) {
-  return "--"
-  // return Math.round(n).toLocaleString('fa-IR')
+  if (n === null || n === undefined || Number.isNaN(Number(n))) return '--'
+  return Math.round(Number(n)).toLocaleString('fa-IR')
 }
 
 const addonsYearly = computed(() =>
   addons.filter((a) => selectedAddons.value.includes(a.id)).reduce((s, a) => s + a.yearlyPrice, 0)
 )
-const baseYearly = computed(() => annualPrice.value + addonsYearly.value)
+const baseYearly = computed(() => (annualPrice.value || 0) + addonsYearly.value)
 const subtotal = computed(() => baseYearly.value * selectedYears.value)
 const periodDiscountAmount = computed(() => subtotal.value * activePeriod.value.discount)
 const afterPeriodDiscount = computed(() => subtotal.value - periodDiscountAmount.value)
@@ -252,6 +292,7 @@ async function submitOrder() {
                   <StartCustomSelect
                     v-model="selectedTld"
                     :options="tldOptions"
+                    dir="ltr"
                     placeholder="انتخاب پسوند"
                   />
                 </div>
