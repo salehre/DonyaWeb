@@ -645,6 +645,6 @@ function numberWithSeparatorToman(x: any) {
       'rounded-full': rounded === 'pill'
     }"
   >
-    {{ t("print") }}
+    چاپ فاکتور
   </button>
 </template>

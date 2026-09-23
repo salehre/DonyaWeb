@@ -7,7 +7,7 @@ useHead({
 
 // --- state shared across the flow ---
 const selectedDomain = ref('')
-const selectedPlan = ref('pro')
+const selectedPlan = ref('')
 const planTouched = ref(false)
 const showConfig = ref(false)
 
@@ -26,14 +26,15 @@ const config = ref({
   prioritySupport: false
 })
 
-// lightweight lookup mirroring Start/PlanSelection.vue, only used for the summary bar
-const plans = {
-  basic: { name: 'هاست پایه', price: 'تماس بگیرید' },
-  pro: { name: 'هاست حرفه‌ای', price: 'تماس بگیرید' },
-  business: { name: 'هاست سازمانی', price: 'تماس بگیرید' }
-}
+// پلن‌ها از API (همون داده‌ای که Start/PlanSelection.vue نشون می‌ده)
+const { findPlan, defaultPlan } = await useHostingPlans()
 
-const activePlan = computed(() => plans[selectedPlan.value])
+// اگه پلن انتخاب‌شده معتبر نیست (مثلاً هنوز چیزی انتخاب نشده)، اولین پلن قابل‌سفارش پیش‌فرضه
+watch(defaultPlan, (plan) => {
+  if (!findPlan(selectedPlan.value) && plan) selectedPlan.value = plan.id
+}, { immediate: true })
+
+const activePlan = computed(() => findPlan(selectedPlan.value))
 
 const currentStep = computed(() => {
   if (!selectedDomain.value) return 1
@@ -109,10 +110,13 @@ function onDomainSelected() {
 
     <!-- Sticky order summary -->
     <StartOrderSummary
+      v-if="activePlan"
       :domain="selectedDomain"
-      :plan-id="selectedPlan"
+      :plan-id="activePlan.id"
       :plan-name="activePlan.name"
-      :plan-price="activePlan.price"
+      :plan-price="activePlan.finalPrice"
+      :currency-name="activePlan.currencyName"
+      :sellable="activePlan.sellable"
     />
   </div>
-</template>
+</template>

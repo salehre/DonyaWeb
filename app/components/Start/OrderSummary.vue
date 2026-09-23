@@ -1,5 +1,6 @@
 <script setup>
 import { ChevronLeft, Globe } from 'lucide-vue-next'
+import { formatHostingPrice, HOSTING_PRICE_PERIOD_LABEL } from '~/composables/useHostingPlans'
 
 const props = defineProps({
   domain: {
@@ -16,14 +17,23 @@ const props = defineProps({
   },
   planPrice: {
     type: Number,
-    required: true
+    default: 0
+  },
+  currencyName: {
+    type: String,
+    default: 'تومان'
+  },
+  sellable: {
+    type: Boolean,
+    default: true
   }
 })
 
-function formatPrice(n) {
-  return "تماس بگیرید"
-  // return Math.round(n).toLocaleString('fa-IR')
-}
+const priceLabel = computed(() =>
+  props.planPrice > 0
+    ? `${formatHostingPrice(props.planPrice)} ${props.currencyName}/${HOSTING_PRICE_PERIOD_LABEL}`
+    : 'قیمت ناموجود'
+)
 
 const checkoutHref = computed(() => {
   const query = new URLSearchParams()
@@ -43,7 +53,7 @@ const checkoutHref = computed(() => {
             <div class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
               {{ planName }}
-              <span class="text-sm font-normal text-gray-400">— {{ formatPrice(planPrice) }} تومان/ماه</span>
+              <span class="text-sm font-normal text-gray-400">— {{ priceLabel }}</span>
             </div>
             <div v-if="domain" class="flex items-center gap-1.5 text-xs text-purple-300 mt-1">
               <Globe class="w-3.5 h-3.5" />
@@ -53,12 +63,19 @@ const checkoutHref = computed(() => {
         </div>
 
         <NuxtLink
+          v-if="sellable"
           :to="checkoutHref"
           class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 transition-all font-bold text-white shadow-lg shadow-purple-500/30 group shrink-0"
         >
           ادامه و ساخت حساب
           <ChevronLeft class="w-5 h-5 transition-transform group-hover:-translate-x-1" />
         </NuxtLink>
+        <span
+          v-else
+          class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 rounded-xl border border-white/10 text-gray-500 cursor-not-allowed shrink-0"
+        >
+          فعلاً قابل سفارش نیست
+        </span>
       </div>
     </div>
   </section>
