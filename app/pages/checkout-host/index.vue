@@ -3,9 +3,9 @@ import { ref, computed } from 'vue'
 import {
   Check, ShieldCheck, CreditCard, Wallet, User, AtSign, Phone,
   Building2, Tag, X, Loader2,
-  RefreshCcw, Lock, ShoppingCart
+  RefreshCcw, Lock, Sparkles, ShoppingCart
 } from 'lucide-vue-next'
-import { formatHostingPrice, HOSTING_PRICE_PERIOD_LABEL } from '~/composables/useHostingPlans'
+import { formatHostingPrice } from '~/composables/useHostingPlans'
 
 useHead({
   title: 'تکمیل سفارش | دنیاوب'
@@ -32,6 +32,36 @@ function selectPlan(plan) {
   if (plan.sellable) planId.value = plan.id
 }
 
+// --- Billing cycle ---
+// ⚠️ API دوره‌ی پرداخت و تخفیف دوره‌ای برنمی‌گردونه؛ تخفیف سالانه فعلاً سمت کلاینت تعریف شده
+const YEARLY_DISCOUNT = 0.1
+const cycles = [
+  { id: 'monthly', label: 'ماهانه', months: 1, discount: 0 },
+  {
+    id: 'yearly',
+    label: 'سالانه',
+    months: 12,
+    discount: YEARLY_DISCOUNT,
+    badge: YEARLY_DISCOUNT > 0 ? `${Math.round(YEARLY_DISCOUNT * 100).toLocaleString('fa-IR')}٪ تخفیف` : null
+  }
+]
+const selectedCycle = ref('yearly')
+const activeCycle = computed(() => cycles.find((c) => c.id === selectedCycle.value))
+
+// --- Add-ons ---
+const addons = [
+  { id: 'ssl', label: 'گواهی SSL Premium (EV)', desc: 'اعتبارسنجی سازمانی و نمایش نام برند در نوار آدرس مرورگر', monthlyPrice: 15000 },
+  { id: 'backup', label: 'بک‌آپ لحظه‌ای هر ۶ ساعت', desc: 'به‌جای بک‌آپ روزانه، هر ۶ ساعت یک نسخه پشتیبان تهیه می‌شود', monthlyPrice: 20000 },
+  { id: 'migration', label: 'انتقال سایت', desc: 'انتقال کامل سایت از هاست فعلی توسط تیم فنی، بدون قطعی', monthlyPrice: 0, free: true }
+]
+const selectedAddons = ref(['migration'])
+function toggleAddon(id) {
+  const i = selectedAddons.value.indexOf(id)
+  if (i === -1) selectedAddons.value.push(id)
+  else selectedAddons.value.splice(i, 1)
+}
+const selectedAddonItems = computed(() => addons.filter((a) => selectedAddons.value.includes(a.id)))
+
 // --- Domain ---
 const domainOption = ref('existing') // 'existing' | 'later'
 const domain = ref(typeof route.query.domain === 'string' ? route.query.domain : '')
@@ -56,10 +86,16 @@ const selectedPayment = ref('gateway')
 // --- Terms ---
 const acceptTerms = ref(false)
 
-// --- Pricing (مستقیم از API: price / discount / final_price) ---
-const subtotal = computed(() => selectedPlan.value?.price || 0)
-const discountAmount = computed(() => selectedPlan.value?.discount || 0)
-const totalPrice = computed(() => selectedPlan.value?.finalPrice || 0)
+// --- Pricing ---
+// قیمت ماهانه‌ی پلن از API (price / discount / final_price) × تعداد ماه دوره، به‌علاوه‌ی خدمات تکمیلی
+const months = computed(() => activeCycle.value.months)
+const addonsMonthly = computed(() => selectedAddonItems.value.reduce((sum, a) => sum + a.monthlyPrice, 0))
+
+const subtotal = computed(() => ((selectedPlan.value?.price || 0) + addonsMonthly.value) * months.value)
+const discountAmount = computed(() => (selectedPlan.value?.discount || 0) * months.value)
+const afterPlanDiscount = computed(() => subtotal.value - discountAmount.value)
+const cycleDiscountAmount = computed(() => afterPlanDiscount.value * activeCycle.value.discount)
+const totalPrice = computed(() => afterPlanDiscount.value - cycleDiscountAmount.value)
 const currencyName = computed(() => selectedPlan.value?.currencyName || 'تومان')
 
 // --- Validation + submit ---
@@ -77,10 +113,14 @@ function buildProductItem() {
     title: selectedPlan.value.name,
     identifier: domainOption.value === 'existing' ? domain.value.trim() : 'بدون دامنه (ثبت بعدی)',
     amount: Math.round(totalPrice.value),
-    cycleLabel: HOSTING_PRICE_PERIOD_LABEL,
+    cycleLabel: activeCycle.value.label,
     summary: [
       { label: 'پلن', value: selectedPlan.value.name },
-      { label: 'دامنه', value: domainOption.value === 'existing' ? domain.value.trim() : 'ثبت بعدی از پنل' }
+      { label: 'دوره پرداخت', value: activeCycle.value.label },
+      { label: 'دامنه', value: domainOption.value === 'existing' ? domain.value.trim() : 'ثبت بعدی از پنل' },
+      ...(selectedAddonItems.value.filter((a) => a.id !== 'migration').length
+        ? [{ label: 'خدمات تکمیلی', value: selectedAddonItems.value.filter((a) => a.id !== 'migration').map((a) => a.label).join('، ') }]
+        : [])
     ]
   }
 }
@@ -209,11 +249,69 @@ async function submitOrder() {
                     </div>
                   </div>
                   <span class="text-xs text-gray-400">
-                    {{ p.hasPrice ? `${formatHostingPrice(p.finalPrice)} ${p.currencyName}/${HOSTING_PRICE_PERIOD_LABEL}` : 'قیمت ناموجود' }}
+                    {{ p.hasPrice ? `${formatHostingPrice(p.finalPrice)} ${p.currencyName}/ماه` : 'قیمت ناموجود' }}
                   </span>
                 </button>
               </div>
             </div>
+
+            <!-- Billing cycle -->
+            <div class="glass-card rounded-2xl p-6">
+              <h2 class="font-bold mb-4">دوره پرداخت</h2>
+              <div class="grid sm:grid-cols-2 gap-4">
+                <button
+                  v-for="c in cycles"
+                  :key="c.id"
+                  type="button"
+                  class="relative text-right rounded-xl border-2 p-4 transition-all"
+                  :class="selectedCycle === c.id ? 'border-purple-500 bg-purple-500/10' : 'border-white/10 hover:border-purple-500/40'"
+                  @click="selectedCycle = c.id"
+                >
+                  <span v-if="c.badge" class="absolute -top-3 left-4 px-2 py-0.5 rounded-full bg-linear-to-r from-purple-600 to-blue-600 text-xs font-bold">
+                    {{ c.badge }}
+                  </span>
+                  <div class="flex items-center justify-between">
+                    <span class="font-medium">{{ c.label }}</span>
+                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="selectedCycle === c.id ? 'border-purple-500 bg-purple-500' : 'border-white/30'">
+                      <Check v-if="selectedCycle === c.id" class="w-3 h-3 text-white" />
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Add-ons -->
+          <fieldset disabled class="glass-card rounded-2xl p-6 opacity-50">
+            <div class="glass-card rounded-2xl p-6">
+              <h2 class="font-bold mb-4 flex items-center gap-2">
+                <Sparkles class="w-5 h-5 text-purple-400" /> خدمات تکمیلی
+              </h2>
+              <div class="space-y-3">
+                <label
+                  v-for="a in addons"
+                  :key="a.id"
+                  class="flex items-start gap-3 rounded-xl border-2 p-4 cursor-not-allowed transition-all"
+                  :class="selectedAddons.includes(a.id) ? 'border-purple-500 bg-purple-500/10' : 'border-white/10 hover:border-purple-500/40'"
+                >
+                  <input
+                    type="checkbox"
+                    class="mt-1 w-4 h-4 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500/50 focus:ring-offset-0"
+                    :checked="selectedAddons.includes(a.id)"
+                    @change="toggleAddon(a.id)"
+                  >
+                  <div class="flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="font-medium text-sm">{{ a.label }}</span>
+                      <span class="text-xs shrink-0" :class="a.free ? 'text-green-400' : 'text-gray-400'">
+                        {{ a.free ? 'رایگان' : `${formatHostingPrice(a.monthlyPrice)} ${currencyName}/ماه` }}
+                      </span>
+                    </div>
+                    <p class="text-gray-400 text-xs mt-1 leading-relaxed">{{ a.desc }}</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </fieldset>
 
             <!-- Domain -->
             <div class="glass-card rounded-2xl p-6">
@@ -383,13 +481,19 @@ async function submitOrder() {
 
             <div class="flex items-center justify-between mb-1">
               <span class="text-gray-300 font-medium">{{ selectedPlan.name }}</span>
-              <span class="text-sm text-gray-400">{{ HOSTING_PRICE_PERIOD_LABEL }}</span>
+              <span class="text-sm text-gray-400">{{ activeCycle.label }}</span>
             </div>
             <p v-if="selectedPlan.desc" class="text-gray-400 text-sm mb-4">{{ selectedPlan.desc }}</p>
 
             <ul v-if="selectedPlan.features.length" class="space-y-2 mb-4 text-gray-300 text-sm">
               <li v-for="(f, i) in selectedPlan.features" :key="i" class="flex items-start gap-2">
                 <Check class="w-4 h-4 text-green-400 shrink-0 mt-0.5" /> {{ f }}
+              </li>
+            </ul>
+
+            <ul v-if="selectedAddonItems.length" class="space-y-2 mb-4 text-purple-200 text-sm border-t border-white/10 pt-4">
+              <li v-for="a in selectedAddonItems" :key="a.id" class="flex items-center gap-2">
+                <Sparkles class="w-4 h-4 text-purple-400 shrink-0" /> {{ a.label }}
               </li>
             </ul>
 
@@ -402,6 +506,10 @@ async function submitOrder() {
               <div v-if="discountAmount > 0" class="flex items-center justify-between text-green-400">
                 <span>تخفیف ({{ selectedPlan.discountPercent.toLocaleString('fa-IR') }}٪)</span>
                 <span>−{{ formatHostingPrice(discountAmount) }} {{ currencyName }}</span>
+              </div>
+              <div v-if="cycleDiscountAmount > 0" class="flex items-center justify-between text-green-400">
+                <span>تخفیف دوره سالانه</span>
+                <span>−{{ formatHostingPrice(cycleDiscountAmount) }} {{ currencyName }}</span>
               </div>
             </div>
 
@@ -442,4 +550,4 @@ async function submitOrder() {
         </div>
     </section>
   </div>
-</template>
+</template>
