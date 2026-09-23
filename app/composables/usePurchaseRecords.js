@@ -48,6 +48,7 @@ const translations = {
   toman: 'تومان',
   rial: 'ریال',
   awaiting_payment: 'در انتظار پرداخت',
+  processing: 'در حال پردازش',
   paid: 'پرداخت شده',
   completed: 'تکمیل شده',
   canceled: 'لغو شده',

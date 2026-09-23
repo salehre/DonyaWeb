@@ -8,9 +8,9 @@ useHead({
   title: 'سرویس‌های من | دنیاوب'
 })
 
-const { services } = useDashboard()
 const route = useRoute()
 const router = useRouter()
+const services = []
 
 const filters = [
   { value: 'all', label: 'همه' },

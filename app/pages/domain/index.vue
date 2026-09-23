@@ -14,25 +14,12 @@ const config = useRuntimeConfig()
 const apiHeaders = useApiHeaders()
 const DOMAIN_CATEGORY_ID = '1' // دسته‌ی "پسوند دامنه" در پنل دنیاوب
 const POPULAR_TLD_ORDER = ['.com', '.ir', '.net', '.org', '.io', '.co']
-const tlds = ref([])
-const isLoadingPrices = ref(true)
-
-// فقط برای بخش «قیمت پسوندهای محبوب» — همون ۶ تای قبلی، به همون ترتیب
-const popularTlds = computed(() =>
-  POPULAR_TLD_ORDER
-    .map((ext) => tlds.value.find((t) => t.ext === ext))
-    .filter(Boolean)
-)
-
-function displayPrice(tld) {
-  if (!tld || tld.price === null || tld.price === undefined) {
-    return isLoadingPrices.value ? 'در حال دریافت...' : 'قیمت ناموجود'
-  }
-  const amount = Number(tld.price).toLocaleString('fa-IR')
-  return tld.currencyName ? `${amount} ${tld.currencyName}` : amount
-}
-
-async function fetchTldPrices() {
+// نکته: قبلاً اینجا یه تابع async معمولی با await ساده صدا زده می‌شد.
+// توی Nuxt این باعث می‌شد درخواست یک‌بار توی SSR اجرا بشه و چون نتیجه‌اش
+// توی payload سرور ذخیره نمی‌شد، موقع hydrate شدن توی مرورگر دوباره از اول
+// fetch بشه (یعنی هر محصول/قیمت دو بار گرفته می‌شد). useAsyncData با یک
+// key ثابت، نتیجه رو توی payload سریالایز می‌کنه و سمت کلاینت دوباره fetch نمی‌کنه.
+const { data: tlds, status: tldsStatus } = await useAsyncData('domain-tld-prices', async () => {
   try {
     const response = await $fetch(`${config.public.apiBase}/products/indexLite`, {
       method: 'POST',
@@ -52,11 +39,11 @@ async function fetchTldPrices() {
 
     if (Number(response?.code) !== 2000) {
       console.error('[Domain] پاسخ نامعتبر از products/indexLite:', response)
-      return
+      return []
     }
 
     const seenIds = new Set()
-    tlds.value = (response.Products || [])
+    return (response.Products || [])
       .filter((product) => {
         if (!product.title_fa || seenIds.has(product.id)) return false
         seenIds.add(product.id)
@@ -77,12 +64,26 @@ async function fetchTldPrices() {
       })
   } catch (error) {
     console.error('[Domain] خطا در دریافت قیمت دامنه‌ها:', error)
-  } finally {
-    isLoadingPrices.value = false
+    return []
   }
-}
+}, { default: () => [] })
 
-await fetchTldPrices()
+const isLoadingPrices = computed(() => tldsStatus.value === 'pending')
+
+// فقط برای بخش «قیمت پسوندهای محبوب» — همون ۶ تای قبلی، به همون ترتیب
+const popularTlds = computed(() =>
+  POPULAR_TLD_ORDER
+    .map((ext) => tlds.value.find((t) => t.ext === ext))
+    .filter(Boolean)
+)
+
+function displayPrice(tld) {
+  if (!tld || tld.price === null || tld.price === undefined) {
+    return isLoadingPrices.value ? 'در حال دریافت...' : 'قیمت ناموجود'
+  }
+  const amount = Number(tld.price).toLocaleString('fa-IR')
+  return tld.currencyName ? `${amount} ${tld.currencyName}` : amount
+}
 
 // --- Domain search ---
 // نکته: این جستجو فقط قیمت/فعال‌بودن پسوند رو از محصولات همین دسته نشون می‌ده.

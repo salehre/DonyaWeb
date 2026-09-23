@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ArrowRight, RotateCcw, Globe, Check } from 'lucide-vue-next'
 
 definePageMeta({ layout: 'dashboard' })
@@ -10,6 +10,7 @@ useHead({
 
 const route = useRoute()
 const { getDomainServices } = useDashboard()
+const { getRenewalPrice } = useDomainRenewalPrice()
 const toast = useToast()
 
 const domains = getDomainServices()
@@ -31,18 +32,50 @@ const selectedYears = ref(1)
 
 const selectedDomain = computed(() => domains.find((d) => d.id === selectedId.value) || null)
 
-const basePrice = "تماس بگیرید"
+// پسوند دامنه‌ی انتخاب‌شده (مثلاً "example.com" -> ".com")
+const selectedDomainExt = computed(() => {
+  const identifier = selectedDomain.value?.identifier || ''
+  const idx = identifier.lastIndexOf('.')
+  return idx > -1 ? identifier.slice(idx) : ''
+})
 
-// const basePrice = computed(() => {
-//   if (!selectedDomain.value) return 0
-//   return Number(selectedDomain.value.price.replace(/[^\d]/g, ''))
-// })
+// قیمت تمدید واقعی که از products/show گرفته می‌شه (همون مقدار ثبت‌شده، با ارز خودش)
+const renewalPrice = ref(null) // { amount, currencyName, currencySymbol }
+const isLoadingPrice = ref(false)
 
-const totalPrice = "تماس بگیرید"
-// const totalPrice = computed(() => basePrice.value * selectedYears.value)
+async function loadRenewalPrice() {
+  if (!selectedDomainExt.value) {
+    renewalPrice.value = null
+    return
+  }
+  isLoadingPrice.value = true
+  try {
+    renewalPrice.value = await getRenewalPrice(selectedDomainExt.value)
+  } catch (error) {
+    console.error('[DomainRenew] خطا در دریافت قیمت تمدید:', error)
+    renewalPrice.value = null
+  } finally {
+    isLoadingPrice.value = false
+  }
+}
+
+watch(selectedDomainExt, loadRenewalPrice, { immediate: true })
+
+const basePriceLabel = computed(() => {
+  if (isLoadingPrice.value) return 'در حال دریافت...'
+  if (!renewalPrice.value) return 'تماس بگیرید'
+  return `${formatNumber(renewalPrice.value.amount)} ${renewalPrice.value.currencyName}`
+})
+
+const totalPriceLabel = computed(() => {
+  if (isLoadingPrice.value) return 'در حال دریافت...'
+  if (!renewalPrice.value) return 'تماس بگیرید'
+  const total = renewalPrice.value.amount * selectedYears.value
+  return `${formatNumber(total)} ${renewalPrice.value.currencyName}`
+})
 
 function formatNumber(n) {
-  return n.toLocaleString('fa-IR')
+  return Number(n).toLocaleString('fa-IR')
 }
 
 const isSubmitting = ref(false)
@@ -126,7 +159,7 @@ async function handleRenew() {
         <div class="rounded-2xl bg-white/5 p-5 space-y-2 text-sm mt-5">
           <div class="flex justify-between text-gray-400">
             <span>قیمت سالانه</span>
-            <span>{{ formatNumber(basePrice) }} تومان</span>
+            <span>{{ basePriceLabel }}</span>
           </div>
           <div class="flex justify-between text-gray-400">
             <span>مدت</span>
@@ -134,7 +167,7 @@ async function handleRenew() {
           </div>
           <div class="flex justify-between font-bold text-lg pt-2 border-t border-white/10">
             <span>مبلغ قابل پرداخت</span>
-            <span>{{ formatNumber(totalPrice) }} تومان</span>
+            <span>{{ totalPriceLabel }}</span>
           </div>
         </div>
 

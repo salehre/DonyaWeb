@@ -100,6 +100,7 @@ const displayValue = computed(() => toJalaliDisplay(props.modelValue))
         type="date"
         locale="fa"
         simple
+        :show-now-btn="true"
         color="#a78bfa"
         format="YYYY-MM-DD"
         display-format="jYYYY/jMM/jDD"

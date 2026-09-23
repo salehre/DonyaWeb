@@ -20,10 +20,11 @@ const DOMAIN_CATEGORY_ID = '1'
 const DOMAIN_PRICE_MULTIPLIER = 235000
 
 // --- TLD price table (annual price) ---
-const tlds = ref({})
-const isLoadingPrice = ref(true)
-
-async function fetchDomainPrices() {
+// قبلاً اینجا یه تابع async معمولی با await ساده صدا زده می‌شد که باعث می‌شد
+// توی Nuxt، درخواست هم توی SSR و هم دوباره موقع hydrate شدن توی مرورگر
+// اجرا بشه (هر محصول دو بار fetch می‌شد). useAsyncData نتیجه رو توی payload
+// سرور ذخیره می‌کنه و سمت کلاینت دیگه دوباره fetch نمی‌کنه.
+const { data: tlds, status: tldsStatus } = await useAsyncData('checkout-domain-tld-prices', async () => {
   try {
     const response = await $fetch(`${config.public.apiBase}/products/indexLite`, {
       method: 'POST',
@@ -41,7 +42,7 @@ async function fetchDomainPrices() {
       }
     })
 
-    if (Number(response?.code) !== 2000) return
+    if (Number(response?.code) !== 2000) return {}
 
     const prices = {}
     for (const product of response.Products || []) {
@@ -54,15 +55,14 @@ async function fetchDomainPrices() {
         ? null
         : Number(rawPrice) * DOMAIN_PRICE_MULTIPLIER
     }
-    tlds.value = prices
+    return prices
   } catch (error) {
     console.error('[Domain checkout] خطا در دریافت قیمت دامنه‌ها:', error)
-  } finally {
-    isLoadingPrice.value = false
+    return {}
   }
-}
+}, { default: () => ({}) })
 
-await fetchDomainPrices()
+const isLoadingPrice = computed(() => tldsStatus.value === 'pending')
 
 const tldOptions = computed(() => Object.entries(tlds.value).map(([value, price]) => ({
   value,

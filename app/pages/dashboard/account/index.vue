@@ -70,6 +70,10 @@ function isTrue(value) {
   return value === true || value === 1 || value === '1'
 }
 
+const isAccountVerified = computed(() =>
+  isTrue(u.value.verified_mobile) && isTrue(u.value.verified_email)
+)
+
 // تاریخ‌وساعت‌های سرور UTC هستند → نمایش به وقت تهران
 const dateTimeFormatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
   year: 'numeric',
@@ -98,7 +102,10 @@ function formatMobile(value) {
 
 const avatarLetter = computed(() => u.value.first_name?.charAt(0) || u.value.full_name?.charAt(0) || '؟')
 
-const statusLabel = computed(() => statusLabels[u.value.status_text] ?? u.value.status_text ?? '')
+const statusLabel = computed(() => {
+  if (u.value.status_text === 'active' && !isAccountVerified.value) return 'پیش ثبت نام'
+  return statusLabels[u.value.status_text] ?? u.value.status_text ?? ''
+})
 
 // فیلدهای فقط‌نمایشی (کد ملی، تاریخ تولد و جنسیت پایین‌تر در فرم قابل ویرایش هستند)
 const infoRows = computed(() => {

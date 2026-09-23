@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { Wallet, CreditCard, Landmark, Plus, ArrowDownLeft, ArrowUpRight, ArrowRight } from 'lucide-vue-next'
+import { Wallet, CreditCard, Landmark, Plus, ArrowDownLeft, ArrowUpRight, ArrowRight, X, Loader2 } from 'lucide-vue-next'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -18,6 +18,8 @@ const {
   transactionsPending,
   ensureLoaded,
   depositViaGateway,
+  uploadReceiptImage,
+  requestDeposit,
   formatNumber
 } = useWallet()
 
@@ -34,6 +36,12 @@ const amount = ref(null)
 const customAmount = ref('')
 const method = ref('gateway')
 const isSubmitting = ref(false)
+
+// مبلغ نهایی به‌صورت computed تا هم در validate و هم در disabled دکمه استفاده شود
+const finalAmount = computed(() =>
+  customAmount.value ? numericAmount(customAmount.value) : amount.value
+)
+const isAmountValid = computed(() => Boolean(finalAmount.value) && finalAmount.value >= 10000)
 
 function toEnglishDigits(value) {
   return String(value || '')
@@ -60,9 +68,72 @@ function goBack() {
   router.back()
 }
 
+// ===== دیالوگ ثبت فیش واریزی =====
+const showReceiptDialog = ref(false)
+const receiptAmount = ref('')
+const receiptTrackingCode = ref('')
+const receiptFiles = ref([])
+const receiptDate = ref('')
+const receiptDescription = ref('')
+const isSubmittingReceipt = ref(false)
+
+function openReceiptDialog() {
+  method.value = 'card'
+  showReceiptDialog.value = true
+}
+
+function closeReceiptDialog() {
+  if (isSubmittingReceipt.value) return
+  showReceiptDialog.value = false
+  receiptAmount.value = ''
+  receiptTrackingCode.value = ''
+  receiptFiles.value = []
+  receiptDate.value = ''
+  receiptDescription.value = ''
+}
+
+async function submitReceipt() {
+  const amountValue = numericAmount(receiptAmount.value)
+  if (!amountValue) {
+    toast.error('مبلغ واریزی الزامی است')
+    return
+  }
+  if (!receiptTrackingCode.value.trim()) {
+    toast.error('شماره پیگیری الزامی است')
+    return
+  }
+  if (!receiptDate.value) {
+    toast.error('تاریخ سند الزامی است')
+    return
+  }
+
+  isSubmittingReceipt.value = true
+  try {
+    let attachmentPath = null
+    if (receiptFiles.value.length) {
+      attachmentPath = await uploadReceiptImage(receiptFiles.value[0])
+    }
+
+    await requestDeposit({
+      amount: amountValue,
+      trackingCode: receiptTrackingCode.value.trim(),
+      documentDate: receiptDate.value,
+      description: receiptDescription.value,
+      attachment: attachmentPath
+    })
+
+    toast.success('فیش واریزی با موفقیت ثبت شد؛ پس از تأیید، مبلغ به کیف پول اضافه می‌شود.')
+    closeReceiptDialog()
+  } catch (error) {
+    console.error('Receipt submit error:', error)
+    toast.error(error.message || 'ثبت فیش واریزی ناموفق بود.')
+  } finally {
+    isSubmittingReceipt.value = false
+  }
+}
+
 async function handleTopup() {
-  const finalAmount = customAmount.value ? numericAmount(customAmount.value) : amount.value
-  if (!finalAmount || finalAmount < 10000) {
+  if (!isAmountValid.value) {
     toast.error('حداقل مبلغ شارژ ۱۰,۰۰۰ تومان است')
     return
   }
@@ -74,10 +145,12 @@ async function handleTopup() {
 
   isSubmitting.value = true
   try {
-    const paymentUrl = await depositViaGateway(finalAmount)
+    const paymentUrl = await depositViaGateway(finalAmount.value)
     // کاربر به درگاه بانک هدایت می‌شود؛ isSubmitting عمداً true می‌ماند تا دکمه دوباره کلیک نشود
     window.location.replace(paymentUrl)
   } catch (error) {
+    // برای دیباگ راحت‌تر (خطاهای شبکه/سرور اینجا مشخص می‌شوند)
+    console.error('Topup error:', error)
     toast.error(error.message || 'خطا در اتصال به درگاه پرداخت')
     isSubmitting.value = false
   }
@@ -157,7 +230,7 @@ async function handleTopup() {
             :class="method === 'card'
               ? 'bg-linear-to-r from-purple-600 to-blue-600 border-transparent shadow-lg shadow-purple-500/30'
               : 'glass border-white/10 text-gray-300 hover:text-white hover:border-purple-500/40'"
-            @click="method = 'card'"
+            @click="openReceiptDialog"
           >
             <CreditCard class="w-4 h-4" />
             فیش واریز
@@ -167,13 +240,16 @@ async function handleTopup() {
 
       <button
         type="button"
-        :disabled="isSubmitting"
+        :disabled="isSubmitting || !isAmountValid"
         class="w-full py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         @click="handleTopup"
       >
         <Plus class="w-4 h-4" />
         {{ isSubmitting ? 'در حال انتقال به درگاه...' : 'افزایش موجودی' }}
       </button>
+      <p v-if="!isAmountValid" class="text-xs text-gray-500 text-center -mt-2">
+        برای فعال‌شدن دکمه، مبلغی حداقل ۱۰,۰۰۰ تومان انتخاب یا وارد کنید.
+      </p>
     </div>
 
     <div class="glass-card rounded-3xl overflow-hidden">
@@ -275,5 +351,100 @@ async function handleTopup() {
         </table>
       </div>
     </div>
+
+    <!-- دیالوگ ثبت فیش واریزی -->
+    <Teleport to="body">
+      <Transition name="modal-slide-up">
+        <div
+          v-if="showReceiptDialog"
+          class="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4"
+          @click.self="closeReceiptDialog"
+        >
+          <div class="w-full max-w-md max-h-[92dvh] overflow-y-auto rounded-t-3xl sm:rounded-3xl glass-strong border border-white/10 p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-6">
+              <h3 class="text-lg font-bold">ثبت فیش واریزی</h3>
+              <button
+                type="button"
+                class="text-gray-400 hover:text-white transition-colors"
+                :disabled="isSubmittingReceipt"
+                @click="closeReceiptDialog"
+              >
+                <X class="w-5 h-5" />
+              </button>
+            </div>
+
+            <div class="space-y-5">
+              <div>
+                <label class="block text-sm text-gray-300 mb-2">مبلغ واریزی (تومان)</label>
+                <input
+                  v-model="receiptAmount"
+                  type="text"
+                  inputmode="numeric"
+                  dir="ltr"
+                  placeholder="مبلغ را وارد کنید"
+                  class="w-full px-4 py-3 rounded-xl input-glass text-left text-white placeholder:text-right placeholder-gray-500 outline-none"
+                  @input="receiptAmount = toPersianAmount(receiptAmount)"
+                >
+              </div>
+
+              <div>
+                <label class="block text-sm text-gray-300 mb-2">شماره پیگیری</label>
+                <input
+                  v-model="receiptTrackingCode"
+                  type="text"
+                  dir="ltr"
+                  placeholder="شماره پیگیری تراکنش بانکی"
+                  class="w-full px-4 py-3 rounded-xl input-glass text-left text-white placeholder:text-right placeholder-gray-500 outline-none"
+                >
+              </div>
+
+              <div>
+                <label class="block text-sm text-gray-300 mb-2">تصویر فیش</label>
+                <DashboardFileAttachInput v-model="receiptFiles" :max="1" :max-size-mb="5" />
+              </div>
+
+              <div>
+                <label class="block text-sm text-gray-300 mb-2">تاریخ</label>
+                <DashboardDatePicker v-model="receiptDate" placeholder="انتخاب تاریخ سند" />
+              </div>
+
+              <div>
+                <label class="block text-sm text-gray-300 mb-2">توضیحات</label>
+                <textarea
+                  v-model="receiptDescription"
+                  rows="3"
+                  placeholder="توضیحات (اختیاری)"
+                  class="w-full px-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 mt-6">
+              <button
+                type="button"
+                :disabled="isSubmittingReceipt"
+                class="flex-1 py-3 rounded-xl bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-bold shadow-lg shadow-green-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                @click="submitReceipt"
+              >
+                <Loader2 v-if="isSubmittingReceipt" class="w-4 h-4 animate-spin" />
+                {{ isSubmittingReceipt ? 'در حال ثبت...' : 'ثبت فیش' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+.modal-slide-up-enter-active,
+.modal-slide-up-leave-active {
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.modal-slide-up-enter-from,
+.modal-slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(24px);
+}
+</style>

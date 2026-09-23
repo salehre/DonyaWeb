@@ -11,6 +11,8 @@
 export function useWallet(currencyId = 1) {
   const config = useRuntimeConfig()
   const headers = useApiHeaders()
+  // آپلود فایل: Content-Type نباید دستی ست شود تا مرورگر multipart + boundary را خودش بسازد
+  const uploadHeaders = useApiHeaders('')
   const toast = useToast()
 
   // پاسخ خام API
@@ -165,6 +167,64 @@ export function useWallet(currencyId = 1) {
     return response
   }
 
+  // آپلود تصویر فیش واریزی و بازگرداندن مسیر فایل روی سرور (برای فیلد attachment)
+  // نکته: نام destinationFolder («wallet-receipts») حدسی‌ست؛ اگر بک‌اند نام دیگری برای
+  // پوشه‌ی مقصد فیش‌های واریزی نیاز دارد، همین رشته را با نام صحیح جایگزین کنید.
+  async function uploadReceiptImage(file) {
+    const formData = new FormData()
+    formData.append('files0', file)
+    formData.append('destinationFolder', 'wallet-receipts')
+
+    let response
+    try {
+      response = await $fetch(`${config.public.apiBase}/uploadImage`, {
+        method: 'POST',
+        headers: uploadHeaders.value,
+        body: formData
+      })
+    } catch (error) {
+      console.error('Receipt upload error:', error, error?.data)
+      throw new Error(error?.data?.message || error?.data?.msg || 'خطا در آپلود تصویر فیش')
+    }
+
+    if (response?.code !== 2000 || !Array.isArray(response?.UploadedImages) || !response.UploadedImages[0]) {
+      console.error('Receipt upload response:', response)
+      throw new Error('خطا در آپلود تصویر فیش')
+    }
+
+    return response.UploadedImages[0]
+  }
+
+  // ثبت فیش واریزی (کیف پول) — مطابق منطق پروژه‌ی مرجع (saveTransactions('Deposit')):
+  // wallets/createTransactionsRequest با kind: 1 و رفرش خودکار موجودی/تاریخچه پس از ثبت
+  async function requestDeposit({ amount, trackingCode, documentDate, description, attachment }) {
+    let response
+    try {
+      response = await $fetch(`${config.public.apiBase}/wallets/createTransactionsRequest`, {
+        method: 'POST',
+        headers: headers.value,
+        body: {
+          amount,
+          document_date: documentDate,
+          description: description || '',
+          tracking_code: trackingCode,
+          kind: 1,
+          attachment: attachment ?? null
+        }
+      })
+    } catch (error) {
+      console.error('Wallet deposit receipt error:', error, error?.data)
+      throw new Error(error?.data?.message || error?.data?.msg || 'ثبت فیش واریزی ناموفق بود.')
+    }
+
+    if (response?.code !== 2000) {
+      throw new Error(response?.message || response?.msg || 'ثبت فیش واریزی ناموفق بود.')
+    }
+
+    await refresh()
+    return response
+  }
+
   const depositPending = useState('wallet-deposit-pending', () => false)
 
   // گرفتن اولین درگاه آنلاین فعال (مطابق منطق پروژه‌ی مرجع)
@@ -191,25 +251,41 @@ export function useWallet(currencyId = 1) {
   }
 
   // شارژ کیف پول از طریق درگاه بانکی؛ در صورت موفقیت آدرس درگاه برمی‌گردد تا کاربر ریدایرکت شود
+  // مطابق منطق پروژه‌ی مرجع: increaseBalance فراخوانی می‌شود و gatewayTitle از پاسخِ خودِ
+  // همین API (response.GatewayTitle) خوانده می‌شود، نه از پاسخِ indexPaymentProcedure —
+  // چون درگاهی که واقعاً برای این تراکنش استفاده شده، همانی‌ست که سرور برمی‌گرداند.
   async function depositViaGateway(amount) {
     depositPending.value = true
     try {
-      const { procedureId, gatewayId, gatewayTitle } = await getOnlineGateway()
+      const { procedureId, gatewayId } = await getOnlineGateway()
 
-      const response = await $fetch(`${config.public.apiBase}/wallets/increaseBalance`, {
-        method: 'POST',
-        headers: headers.value,
-        body: {
-          currency_id: currencyId,
-          selectedPaymentProcedure: procedureId,
-          selectedGateway: gatewayId,
-          amount
-        }
-      })
+      let response
+      try {
+        response = await $fetch(`${config.public.apiBase}/wallets/increaseBalance`, {
+          method: 'POST',
+          headers: headers.value,
+          body: {
+            currency_id: currencyId,
+            selectedPaymentProcedure: procedureId,
+            selectedGateway: gatewayId,
+            amount
+          }
+        })
+      } catch (error) {
+        console.error('Wallet deposit request error:', error, error?.data)
+        throw new Error(error?.data?.msg || error?.data?.message || 'خطا در ایجاد تراکنش واریز')
+      }
 
       if (response?.code !== 2000) {
-        throw new Error(response?.msg || response?.error || 'خطا در ایجاد تراکنش واریز')
+        // مطابق منطق مرجع: اگر کاربر هنوز اطلاعات هویتی‌اش تکمیل نشده (user_not_active)،
+        // مصرف‌کننده‌ی این تابع می‌تواند با بررسی error این پیام، دیالوگ تکمیل اطلاعات را باز کند.
+        const err = new Error(response?.msg || response?.error || 'خطا در ایجاد تراکنش واریز')
+        err.code = response?.error || response?.code
+        throw err
       }
+
+      // عنوان درگاهی که واقعاً برای این تراکنش استفاده شده (نه عنوان انتخاب‌شده‌ی قبلی)
+      const gatewayTitle = response?.GatewayTitle
 
       if (!['jibit', 'zibal', 'zarinpal', 'saman'].includes(gatewayTitle)) {
         throw new Error('این درگاه پرداخت پشتیبانی نمی‌شود.')
@@ -247,6 +323,8 @@ export function useWallet(currencyId = 1) {
     requestWithdraw,
     depositViaGateway,
     depositPending,
+    uploadReceiptImage,
+    requestDeposit,
     hasEnoughBalance,
     // helpers
     formatNumber
