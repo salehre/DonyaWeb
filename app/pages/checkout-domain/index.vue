@@ -50,8 +50,8 @@ const { data: tlds, status: tldsStatus } = await useAsyncData('checkout-domain-t
       const ext = String(product.title_fa || '').trim().toLowerCase()
       if (!ext || ext in prices) continue
 
-      const lastPrice = product.product_last_prices
-      const rawPrice = product.active_price ?? lastPrice?.price ?? product.final_price ?? product.price
+      const lastPrice = pickDomainPrice(product)
+      const rawPrice = lastPrice?.price
       prices[ext] = rawPrice === null || rawPrice === undefined
         ? null
         : Number(rawPrice) * DOMAIN_PRICE_MULTIPLIER

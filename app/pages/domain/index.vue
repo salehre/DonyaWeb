@@ -51,8 +51,8 @@ const { data: tlds, status: tldsStatus } = await useAsyncData('domain-tld-prices
         return true
       })
       .map((product) => {
-        const lastPrice = product.product_last_prices
-        const rawPrice = product.active_price ?? lastPrice?.price ?? product.final_price ?? product.price ?? null
+        const lastPrice = pickDomainPrice(product)
+        const rawPrice = lastPrice?.price ?? null
         return {
           id: product.id,
           ext: product.title_fa, // مثل ".com" — همون‌طور که تو پنل ثبت شده

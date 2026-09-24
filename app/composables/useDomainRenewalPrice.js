@@ -1,8 +1,51 @@
 // قیمت تمدید یک پسوند دامنه رو برمی‌گردونه.
 // منطق: ۱) از products/indexLite (دسته‌ی «پسوند دامنه») آیدیِ محصولِ متناظر با پسوند رو پیدا می‌کنیم،
 //        ۲) با products/show جزئیات کامل محصول (شامل تاریخچه‌ی قیمت‌ها) رو می‌گیریم،
-//        ۳) آخرین ردیفی که توی product_prices ثبت شده (جدیدترین created_at) رو، دقیقاً همون‌طور
+//        ۳) آخرین ردیفِ معتبر (currency_id = 1 و uncertain_price = 0، جدیدترین created_at) رو، دقیقاً همون‌طور
 //           که ثبت شده (بدون تبدیل ارز/محاسبه‌ی اضافه)، به‌عنوان قیمت فعلی برمی‌گردونیم.
+
+// قیمتِ معتبر یک محصول دامنه رو برمی‌گردونه:
+// فقط ردیفی که currency_id = 1 و uncertain_price = 0 داره، و اگه چندتا بود جدیدترینش.
+// هم product_last_prices (توی indexLite) و هم product_prices (توی show) رو چک می‌کنه
+// و چه آرایه باشن چه آبجکت تکی، درست کار می‌کنه. اگه قیمتی پیدا نشه null برمی‌گردونه.
+// نکته: اگه ردیف قیمت اصلاً فیلد currency_id نداشته باشه (چون خود درخواست currency_id: 1 داره)
+// رد نمی‌شه؛ فقط ردیفی که ارز دیگه‌ای داره حذف می‌شه.
+const toArray = (v) => (Array.isArray(v) ? v : v ? [v] : [])
+
+let debugLogCount = 0
+
+export function pickDomainPrice(product) {
+  const candidates = [
+    ...toArray(product?.product_last_prices),
+    ...toArray(product?.product_prices)
+  ]
+
+  const valid = candidates.filter((p) => {
+    if (!p || p.price === null || p.price === undefined) return false
+    const uncertain = p.uncertain_price ?? p.uncertan_price ?? 0
+    const currencyOk = p.currency_id === null || p.currency_id === undefined || Number(p.currency_id) === 1
+    return currencyOk && Number(uncertain) === 0
+  })
+
+  if (!valid.length) {
+    // فقط برای عیب‌یابی: چند بار اول نشون بده چی از API اومده
+    if (debugLogCount < 3) {
+      debugLogCount++
+      console.warn('[pickDomainPrice] قیمت معتبری پیدا نشد. محصول:', {
+        id: product?.id,
+        title_fa: product?.title_fa,
+        keys: Object.keys(product || {}),
+        product_last_prices: product?.product_last_prices,
+        product_prices: product?.product_prices
+      })
+    }
+    return null
+  }
+
+  const time = (p) => Date.parse(p.created_at) || 0
+  return [...valid].sort((a, b) => time(b) - time(a) || Number(b.id || 0) - Number(a.id || 0))[0]
+}
+
 const DOMAIN_CATEGORY_ID = '1' // دسته‌ی "پسوند دامنه" در پنل دنیاوب
 
 export function useDomainRenewalPrice() {
@@ -51,13 +94,8 @@ export function useDomainRenewalPrice() {
 
     if (Number(response?.code) !== 2000) return null
 
-    const prices = (response.Product?.product_prices || [])
-      .filter((price) => Number(price.currency_id) === 1)
-    if (!prices.length) return null
-
-    const latest = [...prices].sort(
-      (a, b) => new Date(b.created_at) - new Date(a.created_at)
-    )[0]
+    const latest = pickDomainPrice(response.Product)
+    if (!latest) return null
 
     return {
       amount: Number(latest.price),
