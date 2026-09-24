@@ -1,32 +1,107 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import {
   User, AtSign, MessageSquare, Clock, Instagram, Twitter, Linkedin, Send
 } from 'lucide-vue-next'
-
 
 const name = ref('')
 const email = ref('')
 const message = ref('')
 const isSubmitting = ref(false)
 const submitted = ref(false)
+const serverError = ref('')
+const errors = ref({ name: '', email: '', message: '' })
 const toast = useToast()
+const config = useRuntimeConfig()
+const apiHeaders = useApiHeaders()
 
-async function handleSubmit() {
-  if (!name.value || !email.value || !message.value) {
-    toast.error('لطفاً نام، ایمیل و پیام خود را وارد کنید')
-    return
+const FORM_ID = 1
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+let startTime = 0
+
+onMounted(() => {
+  startTime = Date.now()
+})
+
+function validateForm() {
+  errors.value = { name: '', email: '', message: '' }
+  let isValid = true
+
+  if (!name.value.trim()) {
+    errors.value.name = 'وارد کردن نام و نام خانوادگی الزامی است'
+    isValid = false
+  } else if (name.value.trim().length < 3) {
+    errors.value.name = 'نام باید حداقل ۳ حرف باشد'
+    isValid = false
   }
 
+  if (!email.value.trim()) {
+    errors.value.email = 'وارد کردن ایمیل الزامی است'
+    isValid = false
+  } else if (!EMAIL_REGEX.test(email.value.trim())) {
+    errors.value.email = 'ایمیل واردشده معتبر نیست'
+    isValid = false
+  }
+
+  if (!message.value.trim()) {
+    errors.value.message = 'وارد کردن متن پیام الزامی است'
+    isValid = false
+  } else if (message.value.trim().length < 10) {
+    errors.value.message = 'متن پیام باید حداقل ۱۰ حرف باشد'
+    isValid = false
+  }
+
+  return isValid
+}
+
+async function handleSubmit() {
+  serverError.value = ''
+  if (!validateForm()) return
+
   isSubmitting.value = true
+  const duration = startTime ? Math.round((Date.now() - startTime) / 1000) : 0
+  const payload = {
+    formId: FORM_ID,
+    status: 1,
+    uniqueForm: true,
+    duration,
+    formResults: {
+      1: name.value.trim(),
+      2: email.value.trim(),
+      3: message.value.trim()
+    }
+  }
+
   try {
-    // TODO: اتصال به API واقعی ارسال پیام
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const response = await $fetch(`${config.public.apiBase}/forms/createResults`, {
+      method: 'POST',
+      headers: apiHeaders.value,
+      body: payload
+    })
+
+    if (Number(response?.code) !== 2000) {
+      throw new Error(response?.message || response?.msg || 'ارسال پیام ناموفق بود')
+    }
+
     submitted.value = true
     toast.success('پیام شما با موفقیت ارسال شد.')
+  } catch (error) {
+    console.error('[Contact] خطا در ارسال فرم:', error)
+    serverError.value = 'ارسال پیام با خطا مواجه شد. لطفاً دوباره تلاش کنید.'
+    toast.error(serverError.value)
   } finally {
     isSubmitting.value = false
   }
+}
+
+function resetForm() {
+  name.value = ''
+  email.value = ''
+  message.value = ''
+  errors.value = { name: '', email: '', message: '' }
+  serverError.value = ''
+  submitted.value = false
+  startTime = Date.now()
 }
 </script>
 
@@ -57,7 +132,10 @@ async function handleSubmit() {
           </button>
         </div>
 
-        <form v-else class="space-y-5" @submit.prevent="handleSubmit">
+        <form v-else class="space-y-5" novalidate @submit.prevent="handleSubmit">
+          <div v-if="serverError" class="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {{ serverError }}
+          </div>
           <div class="grid sm:grid-cols-2 gap-4">
             <div>
               <label for="contact-name" class="block text-sm text-gray-300 mb-2">نام و نام خانوادگی</label>
@@ -69,8 +147,11 @@ async function handleSubmit() {
                   type="text"
                   placeholder="نام شما"
                   class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none"
+                  :class="errors.name ? 'border-red-500' : ''"
+                  @input="errors.name = ''"
                 >
               </div>
+              <p v-if="errors.name" class="mt-1 text-xs text-red-400">{{ errors.name }}</p>
             </div>
 
             <div>
@@ -83,8 +164,11 @@ async function handleSubmit() {
                   type="email"
                   placeholder="example@email.com"
                   class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none"
+                  :class="errors.email ? 'border-red-500' : ''"
+                  @input="errors.email = ''"
                 >
               </div>
+              <p v-if="errors.email" class="mt-1 text-xs text-red-400">{{ errors.email }}</p>
             </div>
           </div>
 
@@ -99,8 +183,11 @@ async function handleSubmit() {
                 rows="5"
                 placeholder="پیام خود را اینجا بنویسید..."
                 class="w-full pr-12 pl-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none resize-none"
+                :class="errors.message ? 'border-red-500' : ''"
+                @input="errors.message = ''"
               ></textarea>
             </div>
+            <p v-if="errors.message" class="mt-1 text-xs text-red-400">{{ errors.message }}</p>
           </div>
 
           <button

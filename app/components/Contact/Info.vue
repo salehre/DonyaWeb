@@ -1,6 +1,9 @@
 <script setup>
 import { Phone, Mail, MapPin } from 'lucide-vue-next'
 
+const officeAddress = 'خیابان ولیعصر، بالاتر از پارک وی، خیابان فیاضی، پلاک 148، طبقه دوم'
+const navigationUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(officeAddress)}`
+
 const channels = [
   {
     icon: Phone,
@@ -19,9 +22,9 @@ const channels = [
   {
     icon: MapPin,
     title: 'دفتر مرکزی',
-    detail: ' خیابان ولیعصر، بالاتر از پارک وی، خیابان فیاضی، پلاک 148، طبقه دوم',
+    detail: officeAddress,
     action: 'مسیریابی',
-    href: 'https://maps.google.com/?q=خیابان ولیعصر ، بالاتر ار پارک وی ،خیابان فیاضی ،پلاک 148 ،طبقه دوم'
+    href: navigationUrl
   }
 ]
 </script>

@@ -18,8 +18,8 @@ const typeIcon = { hosting: Server, vps: Cpu, domain: Globe }
 const typeLabel = { hosting: 'هاست ابری', vps: 'VPS ابری', domain: 'دامنه' }
 
 function formatPrice(n) {
-  return "تماس بگیرید"
-  // return Math.round(n).toLocaleString('fa-IR')
+  if (n === null || n === undefined || Number.isNaN(Number(n))) return '۰'
+  return Math.round(Number(n)).toLocaleString('fa-IR')
 }
 
 function handleRemove(cartId, title) {

@@ -134,7 +134,7 @@ async function submitReceipt() {
 
 async function handleTopup() {
   if (!isAmountValid.value) {
-    toast.error('حداقل مبلغ شارژ ۱۰,۰۰۰ تومان است')
+    toast.error('حداقل مبلغ شارژ ۲۰۰,۰۰۰ تومان است')
     return
   }
 
@@ -248,7 +248,7 @@ async function handleTopup() {
         {{ isSubmitting ? 'در حال انتقال به درگاه...' : 'افزایش موجودی' }}
       </button>
       <p v-if="!isAmountValid" class="text-xs text-gray-500 text-center -mt-2">
-        برای فعال‌شدن دکمه، مبلغی حداقل ۱۰,۰۰۰ تومان انتخاب یا وارد کنید.
+        برای فعال‌شدن دکمه، مبلغی حداقل ۲۰۰,۰۰۰ تومان انتخاب یا وارد کنید.
       </p>
     </div>
 

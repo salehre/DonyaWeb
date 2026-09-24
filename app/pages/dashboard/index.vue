@@ -53,7 +53,7 @@ function isPendingInvoice(item) {
 
 onMounted(async () => {
   try {
-    const [ticketResult, invoiceResult] = await Promise.all([
+    const [ticketResult, invoiceResult, paidInvoiceResult] = await Promise.all([
       $fetch(`${config.public.apiBase}/tickets/indexByUserId`, {
         method: 'POST',
         headers: headers.value,
@@ -68,6 +68,15 @@ onMounted(async () => {
           conditions: { status: [2, 3, 4, 5, 8] },
         },
       }),
+      // فاکتورهای پرداخت‌شده (همراه با آیتم‌ها) → سرویس‌های کاربر
+      $fetch(`${config.public.apiBase}/invoices/indexByUser`, {
+        method: 'POST',
+        headers: headers.value,
+        body: {
+          conditions: { status: [6] },
+          with_detail: true,
+        },
+      }),
     ])
 
     const ticketList = getListFromResponse(ticketResult)
@@ -76,8 +85,12 @@ onMounted(async () => {
     tickets.value = ticketList
     stats.openTickets = ticketList.filter(isOpenTicket).length
     stats.pendingInvoices = invoiceList.filter(isPendingInvoice).length
-    stats.activeServices = 0
-    stats.expiringServices = 0
+
+    const serviceList = servicesFromInvoices(getListFromResponse(paidInvoiceResult))
+    const needAttention = serviceList.filter((s) => s.status === 'expiring')
+    stats.activeServices = serviceList.filter((s) => s.status === 'active').length
+    stats.expiringServices = needAttention.length
+    expiringServices.value = needAttention.slice(0, 3)
   } catch (err) {
     error.value = err
     console.error('Dashboard stats fetch error:', err)

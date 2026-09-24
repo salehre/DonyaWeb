@@ -25,7 +25,8 @@ export function useDomainRenewalPrice() {
         page: 1,
         category: DOMAIN_CATEGORY_ID,
         typeCode: 0,
-        withAttrib: false
+        withAttrib: false,
+        currency_id: 1
       }
     })
 
@@ -45,12 +46,13 @@ export function useDomainRenewalPrice() {
     const response = await $fetch(`${config.public.apiBase}/products/show`, {
       method: 'POST',
       headers: apiHeaders.value,
-      body: { product_id: productId }
+      body: { product_id: productId, currency_id: 1 }
     })
 
     if (Number(response?.code) !== 2000) return null
 
-    const prices = response.Product?.product_prices || []
+    const prices = (response.Product?.product_prices || [])
+      .filter((price) => Number(price.currency_id) === 1)
     if (!prices.length) return null
 
     const latest = [...prices].sort(

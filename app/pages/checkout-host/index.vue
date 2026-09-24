@@ -485,9 +485,13 @@ async function submitOrder() {
             </div>
             <p v-if="selectedPlan.desc" class="text-gray-400 text-sm mb-4">{{ selectedPlan.desc }}</p>
 
-            <ul v-if="selectedPlan.features.length" class="space-y-2 mb-4 text-gray-300 text-sm">
+            <ul v-if="selectedPlan.features.length" dir="rtl" class="space-y-2 mb-4 text-right text-gray-300 text-sm">
               <li v-for="(f, i) in selectedPlan.features" :key="i" class="flex items-start gap-2">
-                <Check class="w-4 h-4 text-green-400 shrink-0 mt-0.5" /> {{ f }}
+                <Check class="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
+                <span class="flex flex-wrap gap-x-1">
+                  <span v-if="f.key" class="font-medium text-gray-200">{{ f.key }}:</span>
+                  <span dir="ltr">{{ f.value }}</span>
+                </span>
               </li>
             </ul>
 
@@ -509,7 +513,7 @@ async function submitOrder() {
               </div>
               <div v-if="cycleDiscountAmount > 0" class="flex items-center justify-between text-green-400">
                 <span>تخفیف دوره سالانه</span>
-                <span>−{{ formatHostingPrice(cycleDiscountAmount) }} {{ currencyName }}</span>
+                <span>{{ formatHostingPrice(cycleDiscountAmount) }}- {{ currencyName }}</span>
               </div>
             </div>
 

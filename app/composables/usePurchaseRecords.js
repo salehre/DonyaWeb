@@ -52,6 +52,7 @@ const translations = {
   paid: 'پرداخت شده',
   completed: 'تکمیل شده',
   canceled: 'لغو شده',
+  cancel: 'لغو شده',
   returned: 'مرجوع شده',
   IRT: 'تومان',
   cash: 'نقدی',

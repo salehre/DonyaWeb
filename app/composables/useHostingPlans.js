@@ -28,7 +28,7 @@ function buildFeatures(attributes) {
       const value = stripHtml(rawValue)
       if (!value) return null
       const label = stripHtml(attr.title_fa)
-      return label ? `${label}: ${value}` : value
+      return { key: label, value }
     })
     .filter(Boolean)
 }
@@ -74,7 +74,7 @@ export async function useHostingPlans() {
           id,
           inline_attributes: true,
           inline_price: true,
-      
+          currency_id: 1
          }
       })
       if (Number(response?.code) !== 2000 || !response.Product) return null
@@ -99,7 +99,8 @@ export async function useHostingPlans() {
           page: 1,
           category: HOSTING_CATEGORY_ID,
           typeCode: 0,
-          withAttrib: false
+          withAttrib: false,
+          currency_id: 1
         }
       })
 

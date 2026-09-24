@@ -52,9 +52,13 @@ const { plans, isLoading } = await useHostingPlans()
         <p v-if="plan.desc" class="text-gray-400 text-sm mb-6">{{ plan.desc }}</p>
         <div v-else class="mb-6" />
 
-        <ul v-if="plan.features.length" class="space-y-3 mb-8 text-gray-300 text-sm">
+        <ul v-if="plan.features.length" dir="rtl" class="space-y-3 mb-8 text-right text-gray-300 text-sm">
           <li v-for="(f, i) in plan.features" :key="i" class="flex items-start gap-2">
-            <Check class="w-4 h-4 text-green-400 shrink-0 mt-0.5" /> {{ f }}
+            <Check class="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
+            <span class="flex flex-wrap gap-x-1">
+              <span v-if="f.key" class="font-medium text-gray-200">{{ f.key }}:</span>
+              <span dir="ltr">{{ f.value }}</span>
+            </span>
           </li>
         </ul>
 

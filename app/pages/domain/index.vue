@@ -33,7 +33,8 @@ const { data: tlds, status: tldsStatus } = await useAsyncData('domain-tld-prices
         page: 1,
         category: DOMAIN_CATEGORY_ID,
         typeCode: 0,
-        withAttrib: false
+        withAttrib: false,
+        currency_id: 1
       }
     })
 

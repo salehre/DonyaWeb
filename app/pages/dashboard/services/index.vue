@@ -1,5 +1,5 @@
 <script setup>
-import { computed, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { Plus } from 'lucide-vue-next'
 
 definePageMeta({ layout: 'dashboard' })
@@ -10,7 +10,34 @@ useHead({
 
 const route = useRoute()
 const router = useRouter()
-const services = []
+const toast = useToast()
+const { t, apiFetch, numberWithSeparator, formatJalali } = usePurchaseRecords()
+
+const services = ref([])
+const loading = ref(true)
+
+function loadServices() {
+  loading.value = true
+  apiFetch('/invoices/indexByUser', { conditions: { status: [6] }, with_detail: true })
+    .then((response) => {
+      if (response.code !== 2000) return
+      const invoices = response.Invoices || response.invoices || response.data || []
+
+      services.value = servicesFromInvoices(invoices).map((s) => ({
+        ...s,
+        renewDate: s.expireRaw ? formatJalali(s.expireRaw) : '—',
+        price: numberWithSeparator(s.price)
+      }))
+    })
+    .catch((error) => {
+      toast.error(t('error') + ': ' + t(error?.data?.message || error?.message || error))
+    })
+    .finally(() => {
+      loading.value = false
+    })
+}
+
+onMounted(loadServices)
 
 const filters = [
   { value: 'all', label: 'همه' },
@@ -32,8 +59,8 @@ function setFilter(value) {
 }
 
 const filteredServices = computed(() => {
-  if (activeFilter.value === 'all') return services
-  return services.filter((s) => s.type === activeFilter.value)
+  if (activeFilter.value === 'all') return services.value
+  return services.value.filter((s) => s.type === activeFilter.value)
 })
 </script>
 
@@ -64,7 +91,10 @@ const filteredServices = computed(() => {
       </NuxtLink>
     </div>
 
-    <div v-if="filteredServices.length" class="space-y-4">
+    <div v-if="loading" class="space-y-4">
+      <div v-for="n in 3" :key="n" class="h-24 w-full animate-pulse rounded-2xl bg-white/5" />
+    </div>
+    <div v-else-if="filteredServices.length" class="space-y-4">
       <DashboardServiceCard v-for="s in filteredServices" :key="s.id" :service="s" />
     </div>
     <div v-else class="glass-card rounded-3xl p-12 text-center text-gray-400">
