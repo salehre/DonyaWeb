@@ -5,7 +5,7 @@ import {
   Building2, Tag, X, Loader2,
   RefreshCcw, Lock, Cpu, HardDrive, Wifi, Layers, ShoppingCart, CheckCircle2, Send
 } from 'lucide-vue-next'
-import { VPS_LIMITS, calcVpsPrice, formatVpsStorage } from '~/composables/useVpsPricing'
+import { VPS_LIMITS, calcVpsPrice, formatVpsStorage, VPS_PRICE_CPU, VPS_PRICE_RAM, VPS_PRICE_DISK, VPS_PRICE_IP } from '~/composables/useVpsPricing'
 
 useHead({
   title: 'سفارش VPS | دنیاوب'
@@ -17,6 +17,8 @@ const { createOrder, payWithWallet, hasEnoughWalletBalance } = useCheckout()
 const { addItem: addToCartItem } = useCart()
 const config = useRuntimeConfig()
 const apiHeaders = useApiHeaders()
+// همون کوکی‌ای که useApiHeaders ازش Authorization می‌سازه؛ اینجا برای چک لاگین‌بودن قبل از ارسال استفاده می‌شه
+const authTokenCookie = useCookie('donyaweb_auth_token')
 
 // --- VPS plans (فقط مشخصات پایه؛ قیمت با calcVpsPrice از روی نرخ‌های واحد محاسبه می‌شه) ---
 const plans = {
@@ -46,10 +48,15 @@ function formatStorage(value) {
 }
 
 // --- ارسال درخواست VPS به فرم شماره ۳ (پنل دنیاوب) ---
-// آیدی هر form_detail دقیقاً مطابق پاسخ /forms/show برای فرم «vps»:
-// Storage=5, RAM=6, CPU=7, IPv4=8
+// آیدی هر form_detail دقیقاً مطابق آخرین پاسخ /forms/show برای فرم «vps»:
+// Storage=5, RAM=6, CPU=7, IPv4=8, سیستم‌عامل=9, خدمات تکمیلی=10
 const VPS_FORM_ID = 3
-const VPS_FORM_FIELDS = { storage: 5, ram: 6, cpu: 7, ip: 8 }
+const VPS_FORM_FIELDS = { storage: 5, ram: 6, cpu: 7, ip: 8, os: 9, addons: 10 }
+
+// جلوی مقدار انتخاب‌شده‌ی هر فیلد، قیمت همون مقدار رو هم می‌نویسه؛ مثلاً «۸۰ GB (+۳۲۰,۰۰۰ تومان/ماه)»
+function priceSuffix(price) {
+  return price > 0 ? `(${formatPrice(price)} تومان)` : '(رایگان)'
+}
 
 const isVpsRequestSubmitting = ref(false)
 const isVpsRequestDialogOpen = ref(false)
@@ -62,29 +69,50 @@ onMounted(() => {
 })
 
 async function submitVpsRequest() {
+  // اسم/آیدی ارسال‌کننده توی پنل ادمین از روی هدر Authorization (دقیقاً مثل tickets/create) ست می‌شه؛
+  // پس بدون لاگین، توکنی برای شناسایی کاربر وجود نداره و نباید درخواست ارسال بشه
+  if (!authTokenCookie.value) {
+    toast.error('برای ثبت درخواست VPS ابتدا وارد حساب کاربری خود شوید')
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+
   isVpsRequestSubmitting.value = true
   vpsRequestErrorMessage.value = ''
   const duration = vpsRequestStartTime ? Math.round((Date.now() - vpsRequestStartTime) / 1000) : 0
 
+  const selectedAddonsList = addons.filter((a) => selectedAddons.value.includes(a.id))
+
   const payload = {
     formId: VPS_FORM_ID,
     status: 1,
-    uniqueForm: false,
+    uniqueForm: true,
     duration,
     formResults: {
-      [VPS_FORM_FIELDS.storage]: formatStorage(configuration.value.storage),
-      [VPS_FORM_FIELDS.ram]: `${configuration.value.ram} GB`,
-      [VPS_FORM_FIELDS.cpu]: `${configuration.value.cpu} Core`,
-      [VPS_FORM_FIELDS.ip]: `${configuration.value.ip}`
+      [VPS_FORM_FIELDS.storage]: `${formatStorage(configuration.value.storage)} ${priceSuffix(configuration.value.storage * VPS_PRICE_DISK)}`,
+      [VPS_FORM_FIELDS.ram]: `${configuration.value.ram} GB ${priceSuffix(configuration.value.ram * VPS_PRICE_RAM)}`,
+      [VPS_FORM_FIELDS.cpu]: `${configuration.value.cpu} Core ${priceSuffix(configuration.value.cpu * VPS_PRICE_CPU)}`,
+      [VPS_FORM_FIELDS.ip]: `${configuration.value.ip} عدد ${priceSuffix(Math.max(0, configuration.value.ip - 1) * VPS_PRICE_IP)}`,
+      [VPS_FORM_FIELDS.os]: `${activeOs.value.label} ${priceSuffix(activeOs.value.extraMonthly)}`,
+      // فیلد «خدمات تکمیلی» توی فرم از نوع چک‌باکس تکیه (kind=5) و فقط '1'/'0' قبول می‌کنه؛
+      // فرستادن رشته‌ی چندتایی (اسم+قیمت هر add-on) باعث خطای 403 می‌شد
+      [VPS_FORM_FIELDS.addons]: selectedAddonsList.length ? '1' : '0'
     }
   }
 
   try {
-    const response = await $fetch(`${config.public.apiBase}/forms/createResults`, {
+    // نکته‌ی کلیدی: forms/createResults همیشه به‌صورت مهمان ثبت می‌شه و هیچ اسم/آیدی‌ای
+    // به پنل نمی‌فرسته. برای اتصال به کاربر لاگین‌شده (از روی Authorization) باید از
+    // forms/createResultsWithAuth استفاده کرد — دقیقاً همون منطقی که توی کامپوننت فرم‌ساز
+    // پنل شما هست: submitUrl = forced_login === 1 ? 'forms/createResultsWithAuth' : 'forms/createResults'
+    const response = await $fetch(`${config.public.apiBase}/forms/createResultsWithAuth`, {
       method: 'POST',
       headers: apiHeaders.value,
       body: payload
     })
+
+    // برای دیباگ سمت بک‌اند (اگه اسم/آیدی ارسال‌کننده توی پنل خالی موند، این پاسخ رو با تیم بک‌اند چک کنید)
+    console.log('[VPS request] پاسخ forms/createResults:', response)
 
     if (Number(response?.code) !== 2000) {
       throw new Error(response?.message || response?.msg || 'ثبت درخواست ناموفق بود')
@@ -445,7 +473,7 @@ async function submitOrder() {
             </div> -->
 
             <!-- Terms -->
-            <!-- <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">
+            <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">
               <input
                 v-model="acceptTerms"
                 type="checkbox"
@@ -455,7 +483,7 @@ async function submitOrder() {
                 <NuxtLink to="/terms" class="text-purple-300 hover:text-purple-200 transition-colors">قوانین و مقررات</NuxtLink>
                 استفاده از خدمات دنیاوب را مطالعه کرده‌ام و می‌پذیرم
               </span>
-            </label> -->
+            </label>
           </div>
 
           <!-- Order summary -->
@@ -510,7 +538,7 @@ async function submitOrder() {
               تماس بگیرید
             </button> -->
 
-            <!-- <button
+            <button
               type="button"
               :disabled="isAddingToCart"
               class="w-full py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -519,12 +547,12 @@ async function submitOrder() {
               <Loader2 v-if="isAddingToCart" class="w-4 h-4 animate-spin" />
               <ShoppingCart v-else class="w-4 h-4" />
               {{ isAddingToCart ? 'در حال افزودن...' : 'افزودن به سبد خرید' }}
-            </button> -->
+            </button>
 
             <button
               type="button"
               :disabled="isVpsRequestSubmitting"
-              class="w-full py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              class="w-full mt-3 py-3 rounded-xl border-2 border-blue-500/50 hover:bg-blue-500/10 transition-all font-bold disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               @click="submitVpsRequest"
             >
               <Loader2 v-if="isVpsRequestSubmitting" class="w-4 h-4 animate-spin" />
