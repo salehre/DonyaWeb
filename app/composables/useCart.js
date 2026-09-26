@@ -5,7 +5,7 @@
 // (وابسته به حساب کاربری) جایگزین شود.
 
 import { reactive, computed } from 'vue'
-import { roundDomainPrice } from '~/utils/domainPrice'
+import { truncateDomainPrice } from '~/utils/domainPrice'
 
 const CART_STORAGE_KEY = 'donyaweb_cart_v1'
 
@@ -19,7 +19,7 @@ function hydrate() {
     const stored = JSON.parse(sessionStorage.getItem(CART_STORAGE_KEY) || '[]')
     if (Array.isArray(stored)) {
       cartItems.push(...stored.map((item) => item.type === 'domain'
-        ? { ...item, amount: roundDomainPrice(item.amount) }
+        ? { ...item, amount: truncateDomainPrice(item.amount, item.identifier || item.title) }
         : item))
     }
   } catch {
@@ -50,7 +50,7 @@ export function useCart() {
   // افزودن یک محصول (VPS/هاست/دامنه) پیکربندی‌شده به سبد
   function addItem(item) {
     const normalizedItem = item.type === 'domain'
-      ? { ...item, amount: roundDomainPrice(item.amount) }
+      ? { ...item, amount: truncateDomainPrice(item.amount, item.identifier || item.title) }
       : item
     const cartItem = {
       cartId: generateCartId(item.type),

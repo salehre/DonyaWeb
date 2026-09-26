@@ -59,7 +59,7 @@ const cycles = [
   { id: 'quarterly', label: 'سه‌ماهه', months: 3, discount: 0.05, badge: '۵٪ تخفیف' },
   { id: 'yearly', label: 'سالانه', months: 12, discount: 0.2, badge: '۲۰٪ تخفیف' }
 ]
-const selectedCycle = ref('yearly')
+const selectedCycle = ref('monthly')
 const activeCycle = computed(() => cycles.find((c) => c.id === selectedCycle.value))
 
 // --- Add-ons ---

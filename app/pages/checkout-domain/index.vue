@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { roundDomainPrice } from '~/utils/domainPrice'
+import { truncateDomainPrice } from '~/utils/domainPrice'
 import {
   Check, ShieldCheck, CreditCard, Wallet, User, AtSign, Phone,
   Building2, Tag, X, Loader2,
@@ -54,7 +54,7 @@ const { data: tlds, status: tldsStatus } = await useAsyncData('checkout-domain-t
       const rawPrice = product.active_price ?? lastPrice?.price ?? product.final_price ?? product.price
       prices[ext] = rawPrice === null || rawPrice === undefined
         ? null
-        : roundDomainPrice(rawPrice)
+        : truncateDomainPrice(rawPrice, ext)
     }
     return prices
   } catch (error) {
@@ -65,27 +65,18 @@ const { data: tlds, status: tldsStatus } = await useAsyncData('checkout-domain-t
 
 const isLoadingPrice = computed(() => tldsStatus.value === 'pending')
 
-const tldOptions = computed(() => Object.entries(tlds.value).map(([value, price]) => ({
-  value,
-  label: value
-})))
-
-function splitDomain(full) {
-  const normalizedFull = full.toLowerCase()
-  const match = Object.keys(tlds.value)
+const queryDomain = typeof route.query.domain === 'string' ? route.query.domain.trim() : ''
+const fullDomain = computed(() => queryDomain)
+const selectedTld = computed(() => {
+  const normalizedDomain = fullDomain.value.toLowerCase()
+  return Object.keys(tlds.value)
     .sort((a, b) => b.length - a.length)
-    .find((ext) => normalizedFull.endsWith(ext))
-  if (match) return { name: full.slice(0, full.length - match.length), tld: match }
-  return { name: full, tld: '.com' }
-}
-
-const queryDomain = typeof route.query.domain === 'string' ? route.query.domain : ''
-const initial = splitDomain(queryDomain || 'my-domain.com')
-
-const domainName = ref(initial.name)
-const selectedTld = ref(initial.tld)
+    .find((ext) => normalizedDomain.endsWith(ext)) || ''
+})
+const domainName = computed(() => selectedTld.value
+  ? fullDomain.value.slice(0, -selectedTld.value.length)
+  : '')
 const annualPrice = computed(() => tlds.value[selectedTld.value])
-const fullDomain = computed(() => `${domainName.value}${selectedTld.value}`)
 
 // --- Registration period ---
 const periods = [
@@ -153,18 +144,28 @@ const acceptTerms = ref(false)
 // --- Pricing ---
 function formatPrice(n) {
   if (n === null || n === undefined || Number.isNaN(Number(n))) return '--'
-  return Math.round(Number(n)).toLocaleString('fa-IR')
+  return Number(n).toLocaleString('fa-IR')
 }
 
 const addonsYearly = computed(() =>
-  addons.filter((a) => selectedAddons.value.includes(a.id)).reduce((s, a) => s + a.yearlyPrice, 0)
+  addons
+    .filter((a) => a.id !== 'privacy' && selectedAddons.value.includes(a.id))
+    .reduce((s, a) => s + a.yearlyPrice, 0)
 )
+const privacyTotal = computed(() => {
+  const privacyAddon = addons.find((a) => a.id === 'privacy')
+  return selectedAddons.value.includes('privacy')
+    ? (privacyAddon?.yearlyPrice || 0) * selectedYears.value
+    : 0
+})
 const baseYearly = computed(() => (annualPrice.value || 0) + addonsYearly.value)
 const subtotal = computed(() => baseYearly.value * selectedYears.value)
 const periodDiscountAmount = computed(() => subtotal.value * activePeriod.value.discount)
 const afterPeriodDiscount = computed(() => subtotal.value - periodDiscountAmount.value)
 const couponDiscountAmount = computed(() => (couponApplied.value ? afterPeriodDiscount.value * 0.1 : 0))
-const totalPrice = computed(() => roundDomainPrice(afterPeriodDiscount.value - couponDiscountAmount.value))
+const totalPrice = computed(() =>
+  truncateDomainPrice(afterPeriodDiscount.value - couponDiscountAmount.value, selectedTld.value) + privacyTotal.value
+)
 
 // --- Validation + submit ---
 const isSubmitting = ref(false)
@@ -180,7 +181,7 @@ function buildProductItem() {
     type: 'domain',
     title: fullDomain.value,
     identifier: fullDomain.value,
-    amount: Math.round(totalPrice.value),
+    amount: totalPrice.value,
     cycleLabel: activePeriod.value.label,
     summary: [
       { label: 'دامنه', value: fullDomain.value },
@@ -191,8 +192,8 @@ function buildProductItem() {
 }
 
 async function addToCart() {
-  if (!domainName.value.trim() || !domainRegex.test(domainName.value.trim())) {
-    toast.error('نام دامنه معتبر نیست (فقط حروف انگلیسی، عدد و خط تیره)')
+  if (!selectedTld.value || !domainRegex.test(domainName.value)) {
+    toast.error('دامنهٔ معتبری برای ثبت انتخاب نشده است')
     return
   }
   isAddingToCart.value = true
@@ -288,28 +289,16 @@ async function submitOrder() {
               <h2 class="font-bold mb-4 flex items-center gap-2">
                 <Globe class="w-5 h-5 text-purple-400" /> نام دامنه
               </h2>
-              <div class="flex flex-col sm:flex-row gap-3">
-                <div class="sm:w-48">
-                  <StartCustomSelect
-                    v-model="selectedTld"
-                    :options="tldOptions"
-                    dir="ltr"
-                    placeholder="انتخاب پسوند"
-                  />
+              <div class="rounded-xl border border-white/10 bg-white/5 px-5 py-6 flex items-center justify-between gap-4">
+                  <p v-if="fullDomain" class="text-sm text-gray-400 mt-2">
+                    {{ formatPrice(annualPrice) }} تومان/سال
+                  </p>
+                <div class="min-w-0 text-left" dir="ltr">
+                  <p class="text-xl sm:text-2xl font-bold text-white break-all">
+                    {{ fullDomain || 'دامنه‌ای انتخاب نشده' }}
+                  </p>
                 </div>
-                
-                <input
-                  v-model="domainName"
-                  type="text"
-                  dir="ltr"
-                  placeholder="my-domain"
-                  class="flex-1 px-4 py-3 rounded-xl input-glass text-white placeholder-gray-500 outline-none"
-                >
               </div>
-              <p class="text-sm text-gray-400 mt-3">
-                دامنه انتخابی: <span class="text-purple-300 font-medium" dir="ltr">{{ fullDomain }}</span>
-                — {{ formatPrice(annualPrice) }} تومان/سال
-              </p>
             </div>
 
             <!-- Registration period -->
@@ -478,7 +467,7 @@ async function submitOrder() {
             </div>
 
             <!-- Payment method -->
-            <div class="glass-card rounded-2xl p-6">
+            <!-- <div class="glass-card rounded-2xl p-6">
               <h2 class="font-bold mb-4">روش پرداخت</h2>
               <div class="grid sm:grid-cols-2 gap-4">
                 <button
@@ -493,10 +482,10 @@ async function submitOrder() {
                   <span class="font-medium">{{ m.label }}</span>
                 </button>
               </div>
-            </div>
+            </div> -->
 
             <!-- Terms -->
-            <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">
+            <!-- <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">
               <span class="relative inline-flex w-6 h-6 shrink-0 mt-0.5">
                 <input v-model="acceptTerms" type="checkbox" class="peer sr-only">
                 <span class="absolute inset-0 rounded-lg border border-white/20 bg-white/10 transition-all duration-200 peer-checked:border-transparent peer-checked:bg-linear-to-br peer-checked:from-purple-600 peer-checked:to-blue-600 peer-checked:shadow-lg peer-checked:shadow-purple-500/30 peer-focus-visible:ring-4 peer-focus-visible:ring-purple-500/30" />
@@ -506,7 +495,7 @@ async function submitOrder() {
                 <NuxtLink to="/terms" class="text-purple-300 hover:text-purple-200 transition-colors">قوانین و مقررات</NuxtLink>
                 استفاده از خدمات دنیاوب را مطالعه کرده‌ام و می‌پذیرم
               </span>
-            </label>
+            </label> -->
           </div>
 
           <!-- Order summary -->
@@ -564,6 +553,10 @@ async function submitOrder() {
               <div class="flex items-center justify-between text-gray-400">
                 <span>جمع جزء</span>
                 <span>{{ formatPrice(subtotal) }} تومان</span>
+              </div>
+              <div v-if="privacyTotal > 0" class="flex items-center justify-between text-gray-400">
+                <span>حریم خصوصی WHOIS ({{ selectedYears }} سال)</span>
+                <span>{{ formatPrice(privacyTotal) }} تومان</span>
               </div>
               <div v-if="periodDiscountAmount > 0" class="flex items-center justify-between text-green-400">
                 <span>تخفیف ثبت {{ activePeriod.label }}</span>

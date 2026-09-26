@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { roundDomainPrice } from '~/utils/domainPrice'
+import { truncateDomainPrice } from '~/utils/domainPrice'
 import {
   Search, Check, Globe, ShieldCheck, Lock, RotateCcw, Loader2,
   ArrowLeftRight, Settings2, Network, FolderKey, ChevronDown
@@ -58,7 +58,7 @@ const { data: tlds, status: tldsStatus } = await useAsyncData('domain-tld-prices
           id: product.id,
           ext: product.title_fa, // مثل ".com" — همون‌طور که تو پنل ثبت شده
           slug: product.slug_fa,
-          price: rawPrice !== null && rawPrice !== undefined ? roundDomainPrice(rawPrice) : null,
+          price: rawPrice !== null && rawPrice !== undefined ? truncateDomainPrice(rawPrice, product.title_fa) : null,
           currencyName: lastPrice?.currency_name || null,
           currencySymbol: lastPrice?.currency_symbol || null,
           sellable: Boolean(product.allow_sale) && product.status === 1
