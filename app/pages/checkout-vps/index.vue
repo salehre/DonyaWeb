@@ -1,9 +1,9 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   Check, ShieldCheck, CreditCard, Wallet, User, AtSign, Phone,
   Building2, Tag, X, Loader2,
-  RefreshCcw, Lock, Cpu, HardDrive, Wifi, Layers, ShoppingCart
+  RefreshCcw, Lock, Cpu, HardDrive, Wifi, Layers, ShoppingCart, CheckCircle2, Send
 } from 'lucide-vue-next'
 import { VPS_LIMITS, calcVpsPrice, formatVpsStorage } from '~/composables/useVpsPricing'
 
@@ -15,6 +15,8 @@ const route = useRoute()
 const router = useRouter()
 const { createOrder, payWithWallet, hasEnoughWalletBalance } = useCheckout()
 const { addItem: addToCartItem } = useCart()
+const config = useRuntimeConfig()
+const apiHeaders = useApiHeaders()
 
 // --- VPS plans (فقط مشخصات پایه؛ قیمت با calcVpsPrice از روی نرخ‌های واحد محاسبه می‌شه) ---
 const plans = {
@@ -41,6 +43,67 @@ const configuration = ref({
 
 function formatStorage(value) {
   return formatVpsStorage(value)
+}
+
+// --- ارسال درخواست VPS به فرم شماره ۳ (پنل دنیاوب) ---
+// آیدی هر form_detail دقیقاً مطابق پاسخ /forms/show برای فرم «vps»:
+// Storage=5, RAM=6, CPU=7, IPv4=8
+const VPS_FORM_ID = 3
+const VPS_FORM_FIELDS = { storage: 5, ram: 6, cpu: 7, ip: 8 }
+
+const isVpsRequestSubmitting = ref(false)
+const isVpsRequestDialogOpen = ref(false)
+const vpsRequestSuccess = ref(false)
+const vpsRequestErrorMessage = ref('')
+let vpsRequestStartTime = 0
+
+onMounted(() => {
+  vpsRequestStartTime = Date.now()
+})
+
+async function submitVpsRequest() {
+  isVpsRequestSubmitting.value = true
+  vpsRequestErrorMessage.value = ''
+  const duration = vpsRequestStartTime ? Math.round((Date.now() - vpsRequestStartTime) / 1000) : 0
+
+  const payload = {
+    formId: VPS_FORM_ID,
+    status: 1,
+    uniqueForm: false,
+    duration,
+    formResults: {
+      [VPS_FORM_FIELDS.storage]: formatStorage(configuration.value.storage),
+      [VPS_FORM_FIELDS.ram]: `${configuration.value.ram} GB`,
+      [VPS_FORM_FIELDS.cpu]: `${configuration.value.cpu} Core`,
+      [VPS_FORM_FIELDS.ip]: `${configuration.value.ip}`
+    }
+  }
+
+  try {
+    const response = await $fetch(`${config.public.apiBase}/forms/createResults`, {
+      method: 'POST',
+      headers: apiHeaders.value,
+      body: payload
+    })
+
+    if (Number(response?.code) !== 2000) {
+      throw new Error(response?.message || response?.msg || 'ثبت درخواست ناموفق بود')
+    }
+
+    vpsRequestSuccess.value = true
+    isVpsRequestDialogOpen.value = true
+  } catch (error) {
+    console.error('[VPS] خطا در ثبت درخواست:', error)
+    vpsRequestSuccess.value = false
+    vpsRequestErrorMessage.value = 'ثبت درخواست با خطا مواجه شد. لطفاً دوباره تلاش کنید.'
+    isVpsRequestDialogOpen.value = true
+  } finally {
+    isVpsRequestSubmitting.value = false
+  }
+}
+
+function closeVpsRequestDialog() {
+  isVpsRequestDialogOpen.value = false
 }
 
 // --- Operating system ---
@@ -382,7 +445,7 @@ async function submitOrder() {
             </div> -->
 
             <!-- Terms -->
-            <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">
+            <!-- <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">
               <input
                 v-model="acceptTerms"
                 type="checkbox"
@@ -392,7 +455,7 @@ async function submitOrder() {
                 <NuxtLink to="/terms" class="text-purple-300 hover:text-purple-200 transition-colors">قوانین و مقررات</NuxtLink>
                 استفاده از خدمات دنیاوب را مطالعه کرده‌ام و می‌پذیرم
               </span>
-            </label>
+            </label> -->
           </div>
 
           <!-- Order summary -->
@@ -447,7 +510,7 @@ async function submitOrder() {
               تماس بگیرید
             </button> -->
 
-            <button
+            <!-- <button
               type="button"
               :disabled="isAddingToCart"
               class="w-full py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -456,6 +519,17 @@ async function submitOrder() {
               <Loader2 v-if="isAddingToCart" class="w-4 h-4 animate-spin" />
               <ShoppingCart v-else class="w-4 h-4" />
               {{ isAddingToCart ? 'در حال افزودن...' : 'افزودن به سبد خرید' }}
+            </button> -->
+
+            <button
+              type="button"
+              :disabled="isVpsRequestSubmitting"
+              class="w-full py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              @click="submitVpsRequest"
+            >
+              <Loader2 v-if="isVpsRequestSubmitting" class="w-4 h-4 animate-spin" />
+              <Send v-else class="w-4 h-4" />
+              {{ isVpsRequestSubmitting ? 'در حال ارسال...' : 'درخواست VPS' }}
             </button>
 
             <div class="flex items-center justify-center gap-4 text-xs text-gray-500 mt-4">
@@ -466,5 +540,47 @@ async function submitOrder() {
           </div>
         </div>
     </section>
+
+    <!-- VPS request result dialog -->
+    <Teleport to="body">
+      <div
+        v-if="isVpsRequestDialogOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+        @click.self="closeVpsRequestDialog"
+      >
+        <div class="glass-card w-full max-w-sm rounded-2xl p-6 text-center relative">
+          <button
+            type="button"
+            class="absolute top-4 left-4 text-gray-400 hover:text-white transition-colors"
+            @click="closeVpsRequestDialog"
+          >
+            <X class="w-5 h-5" />
+          </button>
+
+          <div
+            class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+            :class="vpsRequestSuccess ? 'bg-green-500/20' : 'bg-red-500/20'"
+          >
+            <CheckCircle2 v-if="vpsRequestSuccess" class="w-7 h-7 text-green-400" />
+            <X v-else class="w-7 h-7 text-red-400" />
+          </div>
+
+          <h3 class="text-lg font-bold mb-2">
+            {{ vpsRequestSuccess ? 'درخواست شما با موفقیت ثبت شد' : 'ثبت درخواست ناموفق بود' }}
+          </h3>
+          <p class="text-gray-400 text-sm mb-6">
+            {{ vpsRequestSuccess ? 'همکاران ما به‌زودی با شما تماس خواهند گرفت.' : vpsRequestErrorMessage }}
+          </p>
+
+          <button
+            type="button"
+            class="w-full py-2.5 rounded-xl bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all font-bold"
+            @click="closeVpsRequestDialog"
+          >
+            متوجه شدم
+          </button>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

@@ -44,11 +44,23 @@ function generateCartId(type) {
   return `cart-${prefix}-${Date.now().toString().slice(-6)}${rand}`
 }
 
+function getDomainIdentifier(item) {
+  return String(item.identifier || item.title || '').trim().toLowerCase()
+}
+
 export function useCart() {
   hydrate()
 
   // افزودن یک محصول (VPS/هاست/دامنه) پیکربندی‌شده به سبد
   function addItem(item) {
+    if (item.type === 'domain') {
+      const identifier = getDomainIdentifier(item)
+      const alreadyInCart = identifier && cartItems.some(
+        (cartItem) => cartItem.type === 'domain' && getDomainIdentifier(cartItem) === identifier
+      )
+      if (alreadyInCart) return null
+    }
+
     const normalizedItem = item.type === 'domain'
       ? { ...item, amount: truncateDomainPrice(item.amount, item.identifier || item.title) }
       : item

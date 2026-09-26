@@ -198,8 +198,12 @@ async function addToCart() {
   }
   isAddingToCart.value = true
   await new Promise((resolve) => setTimeout(resolve, 400))
-  addToCartItem(buildProductItem())
+  const addedItem = addToCartItem(buildProductItem())
   isAddingToCart.value = false
+  if (!addedItem) {
+    toast.error(`«${fullDomain.value}» قبلاً در سبد خرید قرار گرفته است`)
+    return
+  }
   toast.success(`«${fullDomain.value}» به سبد خرید اضافه شد`)
   router.push('/cart')
 }

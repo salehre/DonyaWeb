@@ -13,6 +13,7 @@ const router = useRouter()
 const { cartItems, removeItem, totalAmount, clearCart } = useCart()
 const { createOrder, payWithWallet, hasEnoughWalletBalance } = useCheckout()
 const toast = useToast()
+const pendingRemoval = ref(null)
 
 const typeIcon = { hosting: Server, vps: Cpu, domain: Globe }
 const typeLabel = { hosting: 'هاست ابری', vps: 'VPS ابری', domain: 'دامنه' }
@@ -22,9 +23,19 @@ function formatPrice(n) {
   return Math.round(Number(n)).toLocaleString('fa-IR')
 }
 
-function handleRemove(cartId, title) {
-  removeItem(cartId)
-  toast.success(`«${title}» از سبد خرید حذف شد`)
+function requestRemove(item) {
+  pendingRemoval.value = item
+}
+
+function cancelRemove() {
+  pendingRemoval.value = null
+}
+
+function confirmRemove() {
+  if (!pendingRemoval.value) return
+  removeItem(pendingRemoval.value.cartId)
+  toast.success(`«${pendingRemoval.value.title}» از سبد خرید حذف شد`)
+  cancelRemove()
 }
 
 // --- کد تخفیف سبد ---
@@ -195,8 +206,9 @@ async function handleCheckout() {
                   </div>
                   <button
                     type="button"
+                    :aria-label="`حذف ${item.title} از سبد خرید`"
                     class="text-gray-500 hover:text-red-400 transition-colors shrink-0"
-                    @click="handleRemove(item.cartId, item.title)"
+                    @click="requestRemove(item)"
                   >
                     <Trash2 class="w-4 h-4" />
                   </button>
@@ -327,7 +339,7 @@ async function handleCheckout() {
             </div>
           </div> -->
 
-          <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">
+          <!-- <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">
             <input
               v-model="acceptTerms"
               type="checkbox"
@@ -337,7 +349,7 @@ async function handleCheckout() {
               <NuxtLink to="/terms" class="text-purple-300 hover:text-purple-200 transition-colors">قوانین و مقررات</NuxtLink>
               استفاده از خدمات دنیاوب را مطالعه کرده‌ام و می‌پذیرم
             </span>
-          </label>
+          </label> -->
         </div>
 
         <!-- خلاصه سفارش -->
@@ -413,5 +425,52 @@ async function handleCheckout() {
         </div>
       </div>
     </section>
+
+    <div
+      v-if="pendingRemoval"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      @click.self="cancelRemove"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="remove-item-title"
+        class="glass-card w-full max-w-md rounded-2xl border border-white/10 p-6 shadow-2xl"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 id="remove-item-title" class="text-lg font-bold">حذف محصول از سبد خرید</h2>
+            <p class="mt-2 text-sm text-gray-400">
+              مطمئن هستید «{{ pendingRemoval.title }}» از سبد خرید حذف شود؟
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="بستن پنجره"
+            class="text-gray-400 hover:text-white transition-colors"
+            @click="cancelRemove"
+          >
+            <X class="w-5 h-5" />
+          </button>
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            class="rounded-lg border border-white/15 px-4 py-2 text-sm text-gray-300 hover:bg-white/5 transition-colors"
+            @click="cancelRemove"
+          >
+            لغو
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg bg-red-500/90 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 transition-colors"
+            @click="confirmRemove"
+          >
+            <Trash2 class="w-4 h-4" />
+            حذف محصول
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
