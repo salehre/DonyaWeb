@@ -14,8 +14,8 @@ const productLinks = [
 const supportLinks = [
   { label: 'درباره ما', to: '/about-us' },
   { label: 'ارتباط با ما', to: '/contact-us' },
-  { label: 'مرکز آموزش', to: '#' },
-  { label: 'وضعیت شبکه', to: '#' },
+  // { label: 'مرکز آموزش', to: '#' },
+  // { label: 'وضعیت شبکه', to: '#' },
   { label: 'تماس با ما', to: '/support' },
   { label: 'قوانین خدمات', to: '/terms' },
   { label: 'حریم خصوصی', to: '/privacy' },

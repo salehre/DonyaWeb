@@ -1,9 +1,15 @@
 <script setup>
 import { ChevronLeft } from 'lucide-vue-next'
 
-const { posts, categoryLabels } = useBlogPosts()
+const { fetchBlogList } = useBlogPosts()
 
-const latestPosts = posts.slice(0, 3)
+// فقط ۳ مقاله‌ی آخر برای پیش‌نمایش توی صفحه‌ی اصلی؛ کش می‌شه تا هم سمت سرور و
+// هم موقع رفتن به صفحه‌ی /blog دوباره درخواست جداگانه‌ای زده نشه
+const { data: latestPosts } = await useAsyncData(
+  'home-latest-blogs',
+  async () => (await fetchBlogList({ page: 1 })).posts.slice(0, 3),
+  { default: () => [] }
+)
 </script>
 
 <template>
@@ -27,7 +33,6 @@ const latestPosts = posts.slice(0, 3)
         v-for="post in latestPosts"
         :key="post.slug"
         :post="post"
-        :category-label="categoryLabels[post.category]"
       />
     </div>
 

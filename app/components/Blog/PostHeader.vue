@@ -2,8 +2,7 @@
 import { Calendar, Clock, ArrowRight } from 'lucide-vue-next'
 
 defineProps({
-  post: { type: Object, required: true },
-  categoryLabel: { type: String, default: '' }
+  post: { type: Object, required: true }
 })
 </script>
 
@@ -14,8 +13,8 @@ defineProps({
       بازگشت به وبلاگ
     </NuxtLink>
 
-    <span class="inline-flex items-center gap-1 mb-4 px-4 py-1 rounded-full glass text-sm text-purple-300 border border-purple-500/30">
-      {{ categoryLabel }}
+    <span v-if="post.categoryLabel" class="inline-flex items-center gap-1 mb-4 px-4 py-1 rounded-full glass text-sm text-purple-300 border border-purple-500/30">
+      {{ post.categoryLabel }}
     </span>
 
     <h1 class="text-3xl md:text-5xl font-bold mb-6 leading-tight">{{ post.title }}</h1>
@@ -34,6 +33,8 @@ defineProps({
       <span class="flex items-center gap-1"><Clock class="w-4 h-4" /> {{ post.readTime }} مطالعه</span>
     </div>
 
-    <div class="h-56 md:h-72 rounded-3xl bg-linear-to-br" :class="post.cover" />
+    <div class="h-56 md:h-72 rounded-3xl overflow-hidden bg-linear-to-br" :class="!post.coverImage && post.cover">
+      <img v-if="post.coverImage" :src="post.coverImage" :alt="post.title" class="w-full h-full object-cover">
+    </div>
   </section>
 </template>

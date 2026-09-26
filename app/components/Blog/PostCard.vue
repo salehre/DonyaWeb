@@ -2,16 +2,16 @@
 import { Clock } from 'lucide-vue-next'
 
 defineProps({
-  post: { type: Object, required: true },
-  categoryLabel: { type: String, default: '' }
+  post: { type: Object, required: true }
 })
 </script>
 
 <template>
   <NuxtLink :to="`/blog/${post.slug}`" class="glass-card rounded-3xl overflow-hidden hover-lift flex flex-col">
-    <div class="h-40 bg-linear-to-br relative" :class="post.cover">
-      <span class="absolute top-4 right-4 px-3 py-1 rounded-full glass-strong text-xs font-medium">
-        {{ categoryLabel }}
+    <div class="h-40 relative bg-linear-to-br" :class="!post.coverImage && post.cover">
+      <img v-if="post.coverImage" :src="post.coverImage" :alt="post.title" class="w-full h-full object-cover">
+      <span v-if="post.categoryLabel" class="absolute top-4 right-4 px-3 py-1 rounded-full glass-strong text-xs font-medium">
+        {{ post.categoryLabel }}
       </span>
     </div>
     <div class="p-6 flex flex-col flex-1">

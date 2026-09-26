@@ -51,7 +51,7 @@ function formatStorage(value) {
 // آیدی هر form_detail دقیقاً مطابق آخرین پاسخ /forms/show برای فرم «vps»:
 // Storage=5, RAM=6, CPU=7, IPv4=8, سیستم‌عامل=9, خدمات تکمیلی=10
 const VPS_FORM_ID = 3
-const VPS_FORM_FIELDS = { storage: 5, ram: 6, cpu: 7, ip: 8, os: 9, addons: 10 }
+const VPS_FORM_FIELDS = { storage: 5, ram: 6, cpu: 7, ip: 8, os: 9, addons: 10, total: 11 }
 
 // جلوی مقدار انتخاب‌شده‌ی هر فیلد، قیمت همون مقدار رو هم می‌نویسه؛ مثلاً «۸۰ GB (+۳۲۰,۰۰۰ تومان/ماه)»
 function priceSuffix(price) {
@@ -86,7 +86,6 @@ async function submitVpsRequest() {
   const payload = {
     formId: VPS_FORM_ID,
     status: 1,
-    uniqueForm: true,
     duration,
     formResults: {
       [VPS_FORM_FIELDS.storage]: `${formatStorage(configuration.value.storage)} ${priceSuffix(configuration.value.storage * VPS_PRICE_DISK)}`,
@@ -94,9 +93,13 @@ async function submitVpsRequest() {
       [VPS_FORM_FIELDS.cpu]: `${configuration.value.cpu} Core ${priceSuffix(configuration.value.cpu * VPS_PRICE_CPU)}`,
       [VPS_FORM_FIELDS.ip]: `${configuration.value.ip} عدد ${priceSuffix(Math.max(0, configuration.value.ip - 1) * VPS_PRICE_IP)}`,
       [VPS_FORM_FIELDS.os]: `${activeOs.value.label} ${priceSuffix(activeOs.value.extraMonthly)}`,
-      // فیلد «خدمات تکمیلی» توی فرم از نوع چک‌باکس تکیه (kind=5) و فقط '1'/'0' قبول می‌کنه؛
-      // فرستادن رشته‌ی چندتایی (اسم+قیمت هر add-on) باعث خطای 403 می‌شد
-      [VPS_FORM_FIELDS.addons]: selectedAddonsList.length ? '1' : '0'
+      // فیلد «خدمات تکمیلی» الان توی فرم از نوع متنی (kind=1) هست؛ دقیقاً مثل بقیه‌ی فیلدها
+      // اسم هر add-on انتخاب‌شده به‌همراه قیمتش فرستاده می‌شه (اگه هیچ‌کدوم انتخاب نشده باشه، رایگان)
+      [VPS_FORM_FIELDS.addons]: selectedAddonsList.length
+        ? selectedAddonsList.map((a) => `${a.label} ${priceSuffix(a.monthlyPrice)}`).join(' - ')
+        : 'رایگان',
+      // فیلد «جمع کل»: همون مبلغ نهایی قابل‌پرداخت که توی خلاصه‌ی سفارش نشون داده می‌شه
+      [VPS_FORM_FIELDS.total]: `${formatPrice(totalPrice.value)} تومان`
     }
   }
 
@@ -155,7 +158,7 @@ const activeCycle = computed(() => cycles.find((c) => c.id === selectedCycle.val
 
 // --- Add-ons ---
 const addons = [
-  { id: 'managed', label: 'پشتیبانی مدیریت‌شده (Managed)', desc: 'پیکربندی، مانیتورینگ و رفع مشکلات سرور توسط تیم فنی دنیاوب', monthlyPrice: 390000 },
+  { id: 'managed', label: 'پشتیبانی مدیریت‌شده', desc: 'پیکربندی، مانیتورینگ و رفع مشکلات سرور توسط تیم فنی دنیاوب', monthlyPrice: 390000 },
   { id: 'backup', label: 'بک‌آپ افزایشی روزانه', desc: 'تهیه نسخه پشتیبان روزانه با نگهداری ۱۴ روزه', monthlyPrice: 290000 },
 ]
 const selectedAddons = ref([])
@@ -473,7 +476,7 @@ async function submitOrder() {
             </div> -->
 
             <!-- Terms -->
-            <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">
+            <!-- <label class="flex items-start gap-2 text-sm text-gray-400 cursor-pointer select-none px-1">
               <input
                 v-model="acceptTerms"
                 type="checkbox"
@@ -483,7 +486,7 @@ async function submitOrder() {
                 <NuxtLink to="/terms" class="text-purple-300 hover:text-purple-200 transition-colors">قوانین و مقررات</NuxtLink>
                 استفاده از خدمات دنیاوب را مطالعه کرده‌ام و می‌پذیرم
               </span>
-            </label>
+            </label> -->
           </div>
 
           <!-- Order summary -->
@@ -538,7 +541,7 @@ async function submitOrder() {
               تماس بگیرید
             </button> -->
 
-            <button
+            <!-- <button
               type="button"
               :disabled="isAddingToCart"
               class="w-full py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -547,12 +550,12 @@ async function submitOrder() {
               <Loader2 v-if="isAddingToCart" class="w-4 h-4 animate-spin" />
               <ShoppingCart v-else class="w-4 h-4" />
               {{ isAddingToCart ? 'در حال افزودن...' : 'افزودن به سبد خرید' }}
-            </button>
+            </button> -->
 
             <button
               type="button"
               :disabled="isVpsRequestSubmitting"
-              class="w-full mt-3 py-3 rounded-xl border-2 border-blue-500/50 hover:bg-blue-500/10 transition-all font-bold disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              class="w-full py-3 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold shadow-lg shadow-purple-500/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               @click="submitVpsRequest"
             >
               <Loader2 v-if="isVpsRequestSubmitting" class="w-4 h-4 animate-spin" />

@@ -1,219 +1,137 @@
-// منبع داده موقت بلاگ — بعداً جای این را با فراخوانی API واقعی (مثلاً از یک CMS) عوض کنید.
+// وبلاگ از API واقعی پنل خونده می‌شه (blog/indexWithImages برای لیست/پیجینیشن،
+// blog/show برای یک مقاله)؛ دقیقاً همون منطقی که توی صفحات نمونه‌ی «مجله» استفاده
+// شده، فقط اینجا به‌جای useGarnetApiFetch مستقیم توی هر صفحه، توی یک composable
+// جمع شده تا بین صفحه‌ی لیست، صفحه‌ی جزئیات و بخش وبلاگ صفحه‌ی اصلی مشترک باشه.
 
-const categories = [
-  { value: 'all', label: 'همه مطالب' },
-  { value: 'tutorial', label: 'آموزشی' },
-  { value: 'security', label: 'امنیت' },
-  { value: 'wordpress', label: 'وردپرس' },
-  { value: 'tips', label: 'نکات و ترفندها' },
-  { value: 'news', label: 'اخبار' }
+export const BLOG_PAGE_SIZE = 12
+
+// چون کاور ثابت نداریم (ممکنه مقاله عکس نداشته باشه)، برای مقاله‌های بدون تصویر
+// یکی از این گرادیان‌ها به‌صورت چرخشی (بر اساس id) به‌عنوان پس‌زمینه‌ی جایگزین انتخاب می‌شه
+const FALLBACK_GRADIENTS = [
+  'from-purple-600 via-pink-600 to-blue-600',
+  'from-blue-600 via-purple-600 to-pink-600',
+  'from-pink-600 via-blue-600 to-purple-600',
+  'from-blue-600 via-pink-600 to-purple-600'
 ]
 
-const categoryLabels = Object.fromEntries(categories.map((c) => [c.value, c.label]))
+function fallbackGradient(id) {
+  const n = Number(id) || 0
+  return FALLBACK_GRADIENTS[n % FALLBACK_GRADIENTS.length]
+}
 
-const posts = [
-  {
-    slug: 'wordpress-speed-tips',
-    title: '۷ نکته طلایی برای افزایش سرعت سایت وردپرسی',
-    excerpt: 'سرعت سایت مستقیماً روی سئو، نرخ تبدیل و تجربه کاربری اثر می‌گذارد. در این مقاله هفت راهکار عملی برای سریع‌تر کردن سایت وردپرسی‌تان را بررسی می‌کنیم.',
-    category: 'wordpress',
-    featured: true,
-    date: '۱۴۰۳/۰۴/۱۵',
-    readTime: '۶ دقیقه',
-    author: { name: 'سارا احمدی', role: 'مدیر فنی زیرساخت', initials: 'س.ا', color: 'from-blue-500 to-purple-600' },
-    cover: 'from-purple-600 via-pink-600 to-blue-600',
-    content: [
-      { type: 'p', text: 'سرعت بارگذاری سایت یکی از مهم‌ترین فاکتورهایی است که هم گوگل و هم کاربران واقعی به آن اهمیت می‌دهند. طبق آمارهای متعدد، هر یک ثانیه تاخیر اضافه در بارگذاری صفحه می‌تواند نرخ تبدیل را به‌طور محسوسی کاهش دهد. در ادامه هفت راهکار عملی برای بهبود سرعت سایت وردپرسی شما را بررسی می‌کنیم.' },
-      { type: 'h2', text: '۱. انتخاب هاست مناسب' },
-      { type: 'p', text: 'زیرساخت میزبانی پایه و اساس سرعت سایت شماست. هاست‌های مبتنی بر NVMe و پیکربندی‌شده مخصوص وردپرس، تفاوت محسوسی در زمان پاسخ‌دهی سرور ایجاد می‌کنند.' },
-      { type: 'h2', text: '۲. استفاده از افزونه کش' },
-      { type: 'p', text: 'افزونه‌های کش مانند WP Rocket یا LiteSpeed Cache، نسخه‌ی ایستای صفحات را ذخیره می‌کنند تا در بازدیدهای بعدی نیازی به پردازش دوباره از سمت سرور نباشد.' },
-      { type: 'h2', text: '۳. بهینه‌سازی تصاویر' },
-      { type: 'p', text: 'فرمت‌های مدرن مانند WebP و فشرده‌سازی بدون افت کیفیت محسوس، حجم تصاویر را تا ۷۰ درصد کاهش می‌دهند.' },
-      { type: 'ul', items: [
-        'استفاده از Lazy Loading برای تصاویر پایین صفحه',
-        'حذف افزونه‌ها و قالب‌های غیرضروری',
-        'استفاده از CDN برای توزیع محتوای استاتیک',
-        'به‌روزرسانی منظم هسته وردپرس، قالب و افزونه‌ها'
-      ] },
-      { type: 'p', text: 'با اعمال این نکات، معمولاً می‌توان زمان بارگذاری سایت را به زیر ۲ ثانیه رساند که هم برای سئو و هم برای تجربه کاربری نتیجه‌ی مثبتی خواهد داشت.' }
-    ]
-  },
-  {
-    slug: 'what-is-ssl',
-    title: 'SSL چیست و چرا هر سایتی به آن نیاز دارد؟',
-    excerpt: 'قفل سبز کنار آدرس سایت‌ها فقط یک نماد بصری نیست. با مفهوم SSL، نحوه‌ی عملکرد آن و دلایل ضروری بودنش برای هر وب‌سایتی آشنا شوید.',
-    category: 'security',
-    featured: false,
-    date: '۱۴۰۳/۰۴/۰۸',
-    readTime: '۴ دقیقه',
-    author: { name: 'رضا کریمی', role: 'مدیر پشتیبانی مشتریان', initials: 'ر.ک', color: 'from-pink-500 to-purple-600' },
-    cover: 'from-blue-600 via-purple-600 to-pink-600',
-    content: [
-      { type: 'p', text: 'SSL (Secure Sockets Layer) پروتکلی است که ارتباط بین مرورگر کاربر و سرور وب‌سایت را رمزنگاری می‌کند. بدون آن، اطلاعاتی مانند رمز عبور یا شماره کارت بانکی به‌صورت متن ساده منتقل می‌شوند و در معرض شنود قرار دارند.' },
-      { type: 'h2', text: 'چرا SSL اهمیت دارد؟' },
-      { type: 'ul', items: [
-        'محافظت از اطلاعات حساس کاربران در حین انتقال',
-        'افزایش اعتماد بازدیدکننده با نمایش آیکون قفل در مرورگر',
-        'تاثیر مثبت مستقیم بر رتبه‌بندی سئو در گوگل',
-        'الزامی برای درگاه‌های پرداخت و فرم‌های ورود اطلاعات'
-      ] },
-      { type: 'p', text: 'در دنیاوب، گواهی SSL رایگان Let’s Encrypt به‌صورت خودکار روی تمام هاست‌ها و دامنه‌ها نصب و تمدید می‌شود؛ بنابراین نیازی به تنظیمات دستی یا خرید جداگانه نیست.' }
-    ]
-  },
-  {
-    slug: 'shared-vps-dedicated-comparison',
-    title: 'تفاوت هاست اشتراکی، VPS و سرور اختصاصی در چیست؟',
-    excerpt: 'انتخاب نوع درست میزبانی به رشد کسب‌وکارتان کمک می‌کند. در این راهنما تفاوت‌های کلیدی سه نوع اصلی میزبانی وب را با هم مقایسه می‌کنیم.',
-    category: 'tutorial',
-    featured: false,
-    date: '۱۴۰۳/۰۳/۲۸',
-    readTime: '۷ دقیقه',
-    author: { name: 'علی محمدی', role: 'بنیان‌گذار و مدیرعامل', initials: 'ع.م', color: 'from-purple-500 to-blue-600' },
-    cover: 'from-pink-600 via-blue-600 to-purple-600',
-    content: [
-      { type: 'p', text: 'یکی از رایج‌ترین سوالاتی که کاربران تازه‌کار می‌پرسند این است: «کدام نوع هاست برای من مناسب است؟» پاسخ به این سوال به میزان ترافیک، بودجه و نیاز فنی سایت شما بستگی دارد.' },
-      { type: 'h2', text: 'هاست اشتراکی' },
-      { type: 'p', text: 'در این مدل، منابع یک سرور فیزیکی بین چندین کاربر تقسیم می‌شود. ارزان‌ترین گزینه است و برای سایت‌های شخصی یا کسب‌وکارهای کوچک با ترافیک محدود مناسب است.' },
-      { type: 'h2', text: 'سرور مجازی (VPS)' },
-      { type: 'p', text: 'با استفاده از تکنولوژی مجازی‌سازی، هر کاربر منابع اختصاصی (CPU، رم، دیسک) روی یک سرور فیزیکی مشترک دریافت می‌کند و دسترسی روت کامل هم دارد؛ گزینه‌ای متعادل بین قیمت و کنترل.' },
-      { type: 'h2', text: 'سرور اختصاصی' },
-      { type: 'p', text: 'در این مدل، تمام سخت‌افزار فیزیکی فقط در اختیار یک کاربر است. بالاترین سطح کارایی، امنیت و سفارشی‌سازی را ارائه می‌دهد و مناسب سایت‌های پرترافیک و سازمان‌هاست.' },
-      { type: 'p', text: 'اگر تازه شروع کرده‌اید، هاست اشتراکی گزینه‌ی خوبی است. با رشد ترافیک، مهاجرت به VPS و در نهایت سرور اختصاصی مسیر طبیعی توسعه‌ی زیرساخت شماست.' }
-    ]
-  },
-  {
-    slug: 'choosing-right-domain',
-    title: 'چگونه دامنه مناسب برای کسب‌وکار خود انتخاب کنیم؟',
-    excerpt: 'نام دامنه اولین چیزی است که مشتریان از برند شما می‌بینند. نکاتی برای انتخاب نامی به‌یادماندنی، حرفه‌ای و مناسب سئو.',
-    category: 'tutorial',
-    featured: false,
-    date: '۱۴۰۳/۰۳/۲۰',
-    readTime: '۵ دقیقه',
-    author: { name: 'مریم رضایی', role: 'مدیر محصول', initials: 'م.ر', color: 'from-purple-500 to-pink-600' },
-    cover: 'from-purple-600 via-blue-600 to-pink-600',
-    content: [
-      { type: 'p', text: 'دامنه‌ی سایت شما بخشی از هویت برندتان است. انتخاب اشتباه می‌تواند در بلندمدت هزینه‌ی بازاریابی و اعتمادسازی را افزایش دهد.' },
-      { type: 'h2', text: 'چند نکته کلیدی' },
-      { type: 'ul', items: [
-        'کوتاه و ساده باشد و به‌راحتی تلفظ و تایپ شود',
-        'از خط‌تیره و اعداد در حد امکان پرهیز کنید',
-        'پسوند مناسب کسب‌وکار خود را انتخاب کنید (مثلاً .ir برای کسب‌وکار داخلی)',
-        'قبل از ثبت، در شبکه‌های اجتماعی هم در دسترس بودن نام را بررسی کنید'
-      ] },
-      { type: 'p', text: 'در نهایت، دامنه‌ای که ثبت می‌کنید باید هم برای انسان‌ها به‌یادماندنی باشد و هم برای موتورهای جستجو قابل‌فهم؛ تعادل بین این دو، انتخاب درست را می‌سازد.' }
-    ]
-  },
-  {
-    slug: 'common-server-security-mistakes',
-    title: '۵ اشتباه رایج امنیتی در مدیریت سرور که باید از آن‌ها دوری کنید',
-    excerpt: 'بسیاری از حملات موفق، نتیجه‌ی چند اشتباه ساده و قابل‌پیشگیری هستند. این اشتباهات را بشناسید تا سرورتان امن‌تر بماند.',
-    category: 'security',
-    featured: false,
-    date: '۱۴۰۳/۰۳/۱۰',
-    readTime: '۶ دقیقه',
-    author: { name: 'سارا احمدی', role: 'مدیر فنی زیرساخت', initials: 'س.ا', color: 'from-blue-500 to-purple-600' },
-    cover: 'from-blue-600 via-pink-600 to-purple-600',
-    content: [
-      { type: 'p', text: 'امنیت سرور یک فرآیند مداوم است، نه یک تنظیم یک‌باره. در ادامه پنج اشتباه رایجی که حتی مدیران باتجربه هم گاهی مرتکب می‌شوند را بررسی می‌کنیم.' },
-      { type: 'ul', items: [
-        'استفاده از رمزهای عبور ضعیف یا پیش‌فرض برای دسترسی روت',
-        'عدم به‌روزرسانی منظم سیستم‌عامل و نرم‌افزارهای نصب‌شده',
-        'باز گذاشتن پورت‌های غیرضروری روی فایروال',
-        'نداشتن بک‌آپ منظم و آزمایش‌نشده',
-        'عدم فعال‌سازی احراز هویت دو مرحله‌ای برای دسترسی مدیریتی'
-      ] },
-      { type: 'p', text: 'رعایت اصول ساده‌ای مانند تغییر پورت پیش‌فرض SSH، استفاده از کلید به‌جای رمز عبور، و پایش لاگ‌ها می‌تواند بخش بزرگی از ریسک‌های امنیتی را حذف کند.' }
-    ]
-  },
-  {
-    slug: 'donyaweb-new-panel-release',
-    title: 'معرفی نسخه جدید پنل مدیریت دنیاوب',
-    excerpt: 'پنل مدیریت جدید دنیاوب با طراحی سریع‌تر، گزارش‌های لحظه‌ای منابع و مدیریت یکپارچه دامنه و هاست از یک داشبورد واحد رونمایی شد.',
-    category: 'news',
-    featured: false,
-    date: '۱۴۰۳/۰۲/۲۵',
-    readTime: '۳ دقیقه',
-    author: { name: 'علی محمدی', role: 'بنیان‌گذار و مدیرعامل', initials: 'ع.م', color: 'from-purple-500 to-blue-600' },
-    cover: 'from-green-600 via-blue-600 to-purple-600',
-    content: [
-      { type: 'p', text: 'با افتخار نسخه‌ی بازطراحی‌شده‌ی پنل مدیریت دنیاوب را معرفی می‌کنیم؛ سریع‌تر، ساده‌تر و با امکانات جدیدی که مدیریت سرویس‌های شما را آسان‌تر می‌کند.' },
-      { type: 'h2', text: 'چه چیزی تغییر کرده؟' },
-      { type: 'ul', items: [
-        'داشبورد یکپارچه برای مدیریت هاست، VPS و دامنه',
-        'نمایش لحظه‌ای مصرف منابع (CPU، رم، پهنای باند)',
-        'صدور فاکتور و پرداخت آنلاین در همان صفحه',
-        'پشتیبانی کامل از حالت تاریک و راست‌چین'
-      ] },
-      { type: 'p', text: 'این به‌روزرسانی به‌مرور برای همه‌ی کاربران فعال می‌شود و نیازی به اقدام خاصی از سمت شما نیست.' }
-    ]
-  },
-  {
-    slug: 'automatic-backup-guide',
-    title: 'بک‌آپ‌گیری خودکار: چرا لازم است و چگونه تنظیم می‌شود؟',
-    excerpt: 'از دست دادن داده‌ها می‌تواند فاجعه‌بار باشد. در این مقاله می‌بینیم چرا بک‌آپ خودکار ضروری است و چطور آن را درست پیکربندی کنیم.',
-    category: 'tips',
-    featured: false,
-    date: '۱۴۰۳/۰۲/۱۲',
-    readTime: '۴ دقیقه',
-    author: { name: 'رضا کریمی', role: 'مدیر پشتیبانی مشتریان', initials: 'ر.ک', color: 'from-pink-500 to-purple-600' },
-    cover: 'from-purple-600 via-pink-600 to-blue-600',
-    content: [
-      { type: 'p', text: 'خرابی سخت‌افزار، حملات سایبری یا حتی یک خطای انسانی ساده می‌تواند در چند ثانیه داده‌های ماه‌ها زحمت شما را از بین ببرد. تنها راه مطمئن مقابله با این ریسک، بک‌آپ‌گیری منظم و خودکار است.' },
-      { type: 'h2', text: 'قانون طلایی ۳-۲-۱' },
-      { type: 'p', text: 'حداقل ۳ نسخه از داده‌ها داشته باشید، روی ۲ نوع رسانه‌ی متفاوت ذخیره کنید و ۱ نسخه را خارج از محل اصلی (مثلاً روی زیرساخت ابری) نگه دارید.' },
-      { type: 'p', text: 'در دنیاوب، بک‌آپ روزانه‌ی خودکار به‌صورت پیش‌فرض روی پلن‌های حرفه‌ای و سازمانی فعال است و بازگردانی نیز تنها با یک کلیک از پنل مدیریت انجام می‌شود.' }
-    ]
-  },
-  {
-    slug: 'migrate-site-without-seo-loss',
-    title: 'راهنمای کامل انتقال سایت به هاست جدید بدون افت سئو',
-    excerpt: 'تغییر هاست همیشه با نگرانی از افت رتبه در گوگل همراه است. با رعایت این مراحل، انتقال را بدون آسیب به سئوی سایت انجام دهید.',
-    category: 'tutorial',
-    featured: false,
-    date: '۱۴۰۳/۰۱/۳۰',
-    readTime: '۸ دقیقه',
-    author: { name: 'مریم رضایی', role: 'مدیر محصول', initials: 'م.ر', color: 'from-purple-500 to-pink-600' },
-    cover: 'from-blue-600 via-purple-600 to-pink-600',
-    content: [
-      { type: 'p', text: 'انتقال سایت به هاست جدید اگر با برنامه‌ریزی درست انجام نشود، می‌تواند باعث خطاهای دسترسی، افت موقت رتبه یا حتی از دست رفتن داده شود. مراحل زیر ریسک این اتفاقات را به حداقل می‌رساند.' },
-      { type: 'h2', text: 'مراحل پیشنهادی' },
-      { type: 'ul', items: [
-        'تهیه بک‌آپ کامل از فایل‌ها و دیتابیس سایت فعلی',
-        'راه‌اندازی سایت روی هاست جدید و تست کامل قبل از تغییر DNS',
-        'تغییر رکوردهای DNS در ساعات کم‌ترافیک سایت',
-        'بررسی وضعیت ایندکس و خطاهای Search Console پس از انتقال',
-        'نگه‌داشتن هاست قدیمی فعال حداقل تا یک هفته پس از انتقال'
-      ] },
-      { type: 'p', text: 'با رعایت این چک‌لیست، معمولاً هیچ افت محسوسی در رتبه‌بندی گوگل مشاهده نخواهد شد و کاربران هم اختلالی در دسترسی به سایت تجربه نمی‌کنند.' }
-    ]
-  }
-]
+function stripHtml(value) {
+  return String(value ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
-export function useBlogPosts() {
-  function getPostBySlug(slug) {
-    return posts.find((p) => p.slug === slug) || null
+function formatBlogDate(dateStr) {
+  if (!dateStr) return ''
+  try {
+    return new Date(dateStr.replace(' ', 'T')).toLocaleDateString('fa-IR', {
+      year: 'numeric', month: 'long', day: 'numeric'
+    })
+  } catch {
+    return dateStr
   }
+}
 
-  function getRelatedPosts(slug, limit = 3) {
-    const current = getPostBySlug(slug)
-    if (!current) return []
-    return posts
-      .filter((p) => p.slug !== slug && p.category === current.category)
-      .concat(posts.filter((p) => p.slug !== slug && p.category !== current.category))
-      .slice(0, limit)
-  }
+function estimateReadTime(html) {
+  const words = stripHtml(html).split(/\s+/).filter(Boolean).length
+  return `${Math.max(1, Math.ceil(words / 120))} دقیقه`
+}
 
-  function getFeaturedPost() {
-    return posts.find((p) => p.featured) || posts[0]
-  }
+// API فعلاً نویسنده‌ی جدا برای هر مقاله برنمی‌گردونه؛ مثل schema.org توی نمونه
+// (author: Organization) همه‌ی مقالات به‌عنوان تیم دنیاوب نمایش داده می‌شن
+const BLOG_AUTHOR = {
+  name: 'تیم دنیاوب',
+  role: 'تیم تولید محتوا',
+  initials: 'د.و',
+  color: 'from-purple-500 to-blue-600'
+}
+
+// خروجی blog/indexWithImages و blog/show رو به شکلی که کامپوننت‌های Blog/* انتظار دارن تبدیل می‌کنه
+function normalizeBlog(raw) {
+  if (!raw) return null
+  const coverImage = raw.blog_images?.[0]?.file || null
 
   return {
-    posts,
-    categories,
-    categoryLabels,
-    getPostBySlug,
-    getRelatedPosts,
-    getFeaturedPost
+    id: raw.id,
+    slug: String(raw.id),
+    title: raw.title_fa || '',
+    excerpt: stripHtml(raw.summary_fa || raw.seo_description_fa || ''),
+    category: raw.category ?? null,
+    categoryLabel: raw.category_text_fa || '',
+    date: formatBlogDate(raw.created_at),
+    readTime: estimateReadTime(raw.description_fa),
+    author: BLOG_AUTHOR,
+    coverImage,
+    cover: fallbackGradient(raw.id),
+    images: raw.blog_images || [],
+    descriptionHtml: raw.description_fa || '',
+    allowComment: raw.allow_comment === 1,
+    comments: raw.blog_comments || []
   }
+}
+
+export function useBlogPosts() {
+  // لیست مقالات با پیجینیشن و فیلتر دسته‌بندی (دقیقاً پارامترهای blog/indexWithImages نمونه)
+  async function fetchBlogList({ page = 1, category = null } = {}) {
+    const params = {
+      amount: String(BLOG_PAGE_SIZE),
+      direction: 'desc',
+      order: 'order',
+      page
+    }
+    if (category && category !== 'all') params.category = String(category)
+
+    try {
+      const response = await useGarnetApiFetch('blog/indexWithImages', params)
+      return {
+        posts: (response.Blog || []).map(normalizeBlog),
+        total: response.TotalCount ?? 0
+      }
+    } catch (error) {
+      console.error('[Blog] خطا در دریافت لیست مقالات:', error)
+      return { posts: [], total: 0 }
+    }
+  }
+
+  // یک مقاله بر اساس id (پارامتر صفحه‌ی [slug] همون id عددی مقاله‌ست)
+  async function fetchPostById(id) {
+    try {
+      const response = await useGarnetApiFetch('blog/show', { id })
+      return normalizeBlog(response.Blog)
+    } catch (error) {
+      console.error('[Blog] خطا در دریافت مقاله:', error)
+      return null
+    }
+  }
+
+  // مقالات مرتبط: چند مقاله‌ی دیگه از همون دسته‌بندی، به‌جز خود مقاله
+  async function fetchRelatedPosts(categoryId, currentId, limit = 3) {
+    if (!categoryId) return []
+    const { posts } = await fetchBlogList({ page: 1, category: categoryId })
+    return posts.filter((p) => p.id !== currentId).slice(0, limit)
+  }
+
+  // دسته‌بندی‌های موجود از روی همون مقاله‌هایی که گرفته شدن استخراج می‌شه
+  // (API endpoint جدایی برای لیست دسته‌بندی‌ها نداریم)
+  function extractCategories(posts) {
+    const seen = new Set()
+    const categories = [{ value: 'all', label: 'همه مطالب' }]
+
+    posts.forEach((p) => {
+      if (p.category !== null && p.categoryLabel && !seen.has(p.category)) {
+        seen.add(p.category)
+        categories.push({ value: p.category, label: p.categoryLabel })
+      }
+    })
+
+    return categories
+  }
+
+  return { fetchBlogList, fetchPostById, fetchRelatedPosts, extractCategories }
 }

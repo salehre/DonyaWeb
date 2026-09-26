@@ -1,7 +1,6 @@
 <script setup>
 defineProps({
-  posts: { type: Array, required: true },
-  categoryLabels: { type: Object, required: true }
+  posts: { type: Array, required: true }
 })
 </script>
 
@@ -13,7 +12,6 @@ defineProps({
         v-for="p in posts"
         :key="p.slug"
         :post="p"
-        :category-label="categoryLabels[p.category]"
       />
     </div>
   </section>
