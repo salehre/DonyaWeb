@@ -1,3 +1,5 @@
+import { roundDomainPrice } from '~/utils/domainPrice'
+
 // قیمت تمدید یک پسوند دامنه رو برمی‌گردونه.
 // منطق: ۱) از products/indexLite (دسته‌ی «پسوند دامنه») آیدیِ محصولِ متناظر با پسوند رو پیدا می‌کنیم،
 //        ۲) با products/show جزئیات کامل محصول (شامل تاریخچه‌ی قیمت‌ها) رو می‌گیریم،
@@ -98,7 +100,7 @@ export function useDomainRenewalPrice() {
     if (!latest) return null
 
     return {
-      amount: Number(latest.price),
+      amount: roundDomainPrice(latest.price),
       currencyName: latest.currency_name || '',
       currencySymbol: latest.currency_symbol || ''
     }

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { roundDomainPrice } from '~/utils/domainPrice'
 import {
   Check, ShieldCheck, CreditCard, Wallet, User, AtSign, Phone,
   Building2, Tag, X, Loader2,
@@ -17,7 +18,6 @@ const { addItem: addToCartItem } = useCart()
 const config = useRuntimeConfig()
 const apiHeaders = useApiHeaders()
 const DOMAIN_CATEGORY_ID = '1'
-const DOMAIN_PRICE_MULTIPLIER = 235000
 
 // --- TLD price table (annual price) ---
 // قبلاً اینجا یه تابع async معمولی با await ساده صدا زده می‌شد که باعث می‌شد
@@ -50,11 +50,11 @@ const { data: tlds, status: tldsStatus } = await useAsyncData('checkout-domain-t
       const ext = String(product.title_fa || '').trim().toLowerCase()
       if (!ext || ext in prices) continue
 
-      const lastPrice = pickDomainPrice(product)
-      const rawPrice = lastPrice?.price
+      const lastPrice = product.product_last_prices
+      const rawPrice = product.active_price ?? lastPrice?.price ?? product.final_price ?? product.price
       prices[ext] = rawPrice === null || rawPrice === undefined
         ? null
-        : Number(rawPrice) * DOMAIN_PRICE_MULTIPLIER
+        : roundDomainPrice(rawPrice)
     }
     return prices
   } catch (error) {
@@ -164,7 +164,7 @@ const subtotal = computed(() => baseYearly.value * selectedYears.value)
 const periodDiscountAmount = computed(() => subtotal.value * activePeriod.value.discount)
 const afterPeriodDiscount = computed(() => subtotal.value - periodDiscountAmount.value)
 const couponDiscountAmount = computed(() => (couponApplied.value ? afterPeriodDiscount.value * 0.1 : 0))
-const totalPrice = computed(() => afterPeriodDiscount.value - couponDiscountAmount.value)
+const totalPrice = computed(() => roundDomainPrice(afterPeriodDiscount.value - couponDiscountAmount.value))
 
 // --- Validation + submit ---
 const isSubmitting = ref(false)

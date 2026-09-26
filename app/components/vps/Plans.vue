@@ -38,7 +38,7 @@
             <li class="flex items-center gap-2"><Cpu class="w-4 h-4 text-blue-400 shrink-0" /> {{ plan.cpu }}</li>
             <li class="flex items-center gap-2"><Layers class="w-4 h-4 text-blue-400 shrink-0" /> {{ plan.ram }} رم</li>
             <li class="flex items-center gap-2"><HardDrive class="w-4 h-4 text-blue-400 shrink-0" /> {{ plan.disk }}</li>
-            <li class="flex items-center gap-2"><Wifi class="w-4 h-4 text-blue-400 shrink-0" /> {{ plan.bandwidth }} ترافیک</li>
+            <li class="flex items-center gap-2"><Wifi class="w-4 h-4 text-blue-400 shrink-0" /> {{ plan.ip }} IPv4 <span class="text-xs text-green-400">(رایگان)</span></li>
           </ul>
         </button>
       </div>
@@ -65,13 +65,21 @@
 
 <script setup>
 import { Cpu, HardDrive, Wifi, Layers, Check } from 'lucide-vue-next'
+import { calcVpsPrice, formatVpsPrice } from '~/composables/useVpsPricing'
 
 const selectedPlan = ref('vps2')
 
-const plans = [
-  { id: 'vps1', name: 'Orbit', cpu: '۱ هسته', ram: '۲ GB', disk: '۴۰ GB NVMe', bandwidth: '۱ TB', price: "۵۵۰,۰۰۰" },
-  { id: 'vps2', name: 'Nova', cpu: '۲ هسته', ram: '۴ GB', disk: '۸۰ GB NVMe', bandwidth: '۲ TB', price: "۱,۱۰۰,۰۰۰", badge: 'محبوب' },
-  { id: 'vps3', name: 'Nebula', cpu: '۴ هسته', ram: '۸ GB', disk: '۱۶۰ GB NVMe', bandwidth: '۴ TB', price: "۲,۲۰۰,۰۰۰" },
-  { id: 'vps4', name: 'Galaxy', cpu: '۶ هسته', ram: '۱۶ GB', disk: '۳۲۰ GB NVMe', bandwidth: '۸ TB', price: "۴,۱۰۰,۰۰۰" }
+// مشخصات خام هر پلن (cpuCores/ramGb/diskGb) که قیمت ازشون محاسبه می‌شه؛
+// برچسب‌های فارسی (cpu/ram/disk) فقط برای نمایش‌ان
+const planSpecs = [
+  { id: 'vps1', name: 'Orbit', cpuCores: 1, ramGb: 2, diskGb: 40, ip: 1, cpu: '۱ هسته', ram: '۲ GB', disk: '۴۰ GB NVMe' },
+  { id: 'vps2', name: 'Nova', cpuCores: 2, ramGb: 4, diskGb: 80, ip: 1, cpu: '۲ هسته', ram: '۴ GB', disk: '۸۰ GB NVMe', badge: 'محبوب' },
+  { id: 'vps3', name: 'Nebula', cpuCores: 4, ramGb: 8, diskGb: 160, ip: 1, cpu: '۴ هسته', ram: '۸ GB', disk: '۱۶۰ GB NVMe' },
+  { id: 'vps4', name: 'Galaxy', cpuCores: 6, ramGb: 16, diskGb: 320, ip: 1, cpu: '۶ هسته', ram: '۱۶ GB', disk: '۳۲۰ GB NVMe' }
 ]
+
+const plans = planSpecs.map((p) => ({
+  ...p,
+  price: formatVpsPrice(calcVpsPrice({ cpu: p.cpuCores, ram: p.ramGb, storage: p.diskGb, ip: p.ip }))
+}))
 </script>

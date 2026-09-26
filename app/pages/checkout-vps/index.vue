@@ -5,6 +5,7 @@ import {
   Building2, Tag, X, Loader2,
   RefreshCcw, Lock, Cpu, HardDrive, Wifi, Layers, ShoppingCart
 } from 'lucide-vue-next'
+import { VPS_LIMITS, calcVpsPrice, formatVpsStorage } from '~/composables/useVpsPricing'
 
 useHead({
   title: 'سفارش VPS | دنیاوب'
@@ -15,12 +16,12 @@ const router = useRouter()
 const { createOrder, payWithWallet, hasEnoughWalletBalance } = useCheckout()
 const { addItem: addToCartItem } = useCart()
 
-// --- VPS plans ---
+// --- VPS plans (فقط مشخصات پایه؛ قیمت با calcVpsPrice از روی نرخ‌های واحد محاسبه می‌شه) ---
 const plans = {
-  vps1: { name: 'Orbit', cpu: 1, ram: 2, storage: 40, traffic: 1, monthlyPrice: 290000 },
-  vps2: { name: 'Nova', cpu: 2, ram: 4, storage: 80, traffic: 2, monthlyPrice: 490000 },
-  vps3: { name: 'Nebula', cpu: 4, ram: 8, storage: 160, traffic: 4, monthlyPrice: 890000 },
-  vps4: { name: 'Galaxy', cpu: 6, ram: 16, storage: 320, traffic: 8, monthlyPrice: 1490000 }
+  vps1: { name: 'Orbit', cpu: 1, ram: 2, storage: 40 },
+  vps2: { name: 'Nova', cpu: 2, ram: 4, storage: 80 },
+  vps3: { name: 'Nebula', cpu: 4, ram: 8, storage: 160 },
+  vps4: { name: 'Galaxy', cpu: 6, ram: 16, storage: 320 }
 }
 
 const isCustom = route.query.custom === '1'
@@ -28,22 +29,18 @@ const initialPlan = route.query.plan && plans[route.query.plan] ? route.query.pl
 const planId = ref(initialPlan)
 const selectedPlan = computed(() => isCustom ? { ...plans.vps1, name: 'سفارشی' } : plans[planId.value])
 
-const limits = {
-  cpu: { min: 1, max: 64, step: 1 },
-  ram: { min: 2, max: 128, step: 2 },
-  storage: { min: 20, max: 2048, step: 10 },
-  traffic: { min: 1, max: 10, step: 1 }
-}
+// دقیقاً مطابق vps-configurator.html
+const limits = VPS_LIMITS
 
 const configuration = ref({
   cpu: isCustom ? limits.cpu.min : selectedPlan.value.cpu,
   ram: isCustom ? limits.ram.min : selectedPlan.value.ram,
   storage: isCustom ? limits.storage.min : selectedPlan.value.storage,
-  traffic: isCustom ? limits.traffic.min : selectedPlan.value.traffic
+  ip: isCustom ? limits.ip.min : (selectedPlan.value.ip ?? 1)
 })
 
 function formatStorage(value) {
-  return value >= 1024 ? `${value / 1024} TB` : `${value} GB`
+  return formatVpsStorage(value)
 }
 
 // --- Operating system ---
@@ -125,7 +122,9 @@ function formatPrice(n) {
 const addonsMonthly = computed(() =>
   addons.filter((a) => selectedAddons.value.includes(a.id)).reduce((s, a) => s + a.monthlyPrice, 0)
 )
-const baseMonthly = computed(() => selectedPlan.value.monthlyPrice + activeOs.value.extraMonthly + addonsMonthly.value)
+// قیمت زنده و دقیقاً مثل vps-configurator.html: بر اساس منابع انتخاب‌شده (cpu/ram/storage/ip) محاسبه می‌شه
+const configPrice = computed(() => calcVpsPrice(configuration.value))
+const baseMonthly = computed(() => configPrice.value + activeOs.value.extraMonthly + addonsMonthly.value)
 const subtotal = computed(() => baseMonthly.value * activeCycle.value.months)
 const cycleDiscountAmount = computed(() => subtotal.value * activeCycle.value.discount)
 const afterCycleDiscount = computed(() => subtotal.value - cycleDiscountAmount.value)
@@ -152,7 +151,7 @@ function buildProductItem() {
       { label: 'vCPU', value: `${configuration.value.cpu} Core` },
       { label: 'RAM', value: `${configuration.value.ram} GB` },
       { label: 'Storage', value: formatStorage(configuration.value.storage) },
-      { label: 'ترافیک', value: `${configuration.value.traffic} TB` },
+      { label: 'IPv4', value: `${configuration.value.ip} عدد` },
       { label: 'سیستم‌عامل', value: activeOs.value.label },
       ...(selectedAddons.value.length
         ? [{ label: 'خدمات تکمیلی', value: addons.filter((a) => selectedAddons.value.includes(a.id)).map((a) => a.label).join('، ') }]
@@ -283,11 +282,11 @@ async function submitOrder() {
 
                 <div class="rounded-xl border border-white/10 bg-white/5 p-4">
                   <div class="flex items-center justify-between gap-2 mb-3 text-sm">
-                    <span class="text-gray-300">ترافیک</span>
-                    <span class="rounded-lg bg-blue-500 px-2.5 py-1 text-xs font-bold text-white">{{ configuration.traffic }} TB</span>
+                    <span class="text-gray-300">IPv4 <span class="text-[10px] text-green-400">(اولین IP رایگان)</span></span>
+                    <span class="rounded-lg bg-blue-500 px-2.5 py-1 text-xs font-bold text-white">{{ configuration.ip }} IP</span>
                   </div>
-                  <input v-model.number="configuration.traffic" type="range" :min="limits.traffic.min" :max="limits.traffic.max" :step="limits.traffic.step" class="w-full accent-blue-500">
-                  <div class="mt-2 flex justify-between text-xs text-gray-500"><span>۱ TB</span><span>۱۰ TB</span></div>
+                  <input v-model.number="configuration.ip" type="range" :min="limits.ip.min" :max="limits.ip.max" :step="limits.ip.step" class="w-full accent-blue-500">
+                  <div class="mt-2 flex justify-between text-xs text-gray-500"><span>۱ IP</span><span>۶ IP</span></div>
                 </div>
               </div>
             </div>
@@ -410,7 +409,7 @@ async function submitOrder() {
               <li class="flex items-center gap-2"><Cpu class="w-4 h-4 text-blue-400 shrink-0" /> {{ configuration.cpu }} Core</li>
               <li class="flex items-center gap-2"><Layers class="w-4 h-4 text-blue-400 shrink-0" /> {{ configuration.ram }} GB RAM</li>
               <li class="flex items-center gap-2"><HardDrive class="w-4 h-4 text-blue-400 shrink-0" /> {{ formatStorage(configuration.storage) }}</li>
-              <li class="flex items-center gap-2"><Wifi class="w-4 h-4 text-blue-400 shrink-0" /> {{ configuration.traffic }} TB ترافیک</li>
+              <li class="flex items-center gap-2"><Wifi class="w-4 h-4 text-blue-400 shrink-0" /> {{ configuration.ip }} IPv4</li>
             </ul>
 
             <ul v-if="selectedAddons.length" class="space-y-2 mb-4 text-blue-200 text-sm border-t border-white/10 pt-4">
