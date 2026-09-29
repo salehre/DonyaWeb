@@ -263,8 +263,9 @@ async function submitOrder() {
                   v-for="c in cycles"
                   :key="c.id"
                   type="button"
-                  class="relative text-right rounded-xl border-2 p-4 transition-all"
-                  :class="selectedCycle === c.id ? 'border-purple-500 bg-purple-500/10' : 'border-white/10 hover:border-purple-500/40'"
+                  :disabled="c.id === 'monthly'"
+                  class="relative text-right rounded-xl border-2 p-4 transition-all disabled:cursor-default!"
+                  :class="c.id === 'monthly' ? 'border-white/10 opacity-50' : selectedCycle === c.id ? 'border-purple-500 bg-purple-500/10' : 'border-white/10 hover:border-purple-500/40'"
                   @click="selectedCycle = c.id"
                 >
                   <span v-if="c.badge" class="absolute -top-3 left-4 px-2 py-0.5 rounded-full bg-linear-to-r from-purple-600 to-blue-600 text-xs font-bold">

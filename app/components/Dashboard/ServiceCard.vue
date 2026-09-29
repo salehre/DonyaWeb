@@ -12,11 +12,8 @@ const typeIcons = {
   domain: Globe
 }
 
-// دامنه‌ها صفحه‌ی مدیریت اختصاصی خودشون رو دارن؛ هاست/VPS به صفحه‌ی جزئیات همون سرویس می‌رن
+// هر سرویس به جزئیات همان آیتم فاکتور می‌رود
 const manageLink = computed(() => {
-  if (props.service.type === 'domain') {
-    return '/dashboard/domains'
-  }
   return { path: `/dashboard/services/${props.service.id}` }
 })
 
@@ -45,7 +42,7 @@ const renewLink = computed(() => {
     </div>
 
     <div class="text-sm text-gray-400 sm:text-left">
-      <div>تمدید: {{ service.renewDate }}</div>
+      <div>خرید: {{ service.purchaseDate }}</div>
       <div>{{ service.price }} تومان / {{ service.cycle }}</div>
     </div>
 

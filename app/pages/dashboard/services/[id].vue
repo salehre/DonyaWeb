@@ -41,12 +41,6 @@ async function loadService() {
       return
     }
 
-    // دامنه‌ها صفحه‌ی مدیریت اختصاصی خودشون رو دارن
-    if (found.type === 'domain') {
-      await navigateTo('/dashboard/domains')
-      return
-    }
-
     service.value = found
   } catch (error) {
     notFound.value = true

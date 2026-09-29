@@ -5,7 +5,7 @@
 const CATEGORY_TYPE = { 1: 'domain', 2: 'hosting', 3: 'vps' }
 
 export const SERVICE_TYPE_LABEL = { hosting: 'هاست ابری', vps: 'VPS ابری', domain: 'دامنه' }
-const DEFAULT_CYCLE = { hosting: 'ماهانه', vps: 'ماهانه', domain: 'سالانه' }
+const DEFAULT_CYCLE = { hosting: 'سالانه', vps: 'ماهانه', domain: 'سالانه' }
 
 // سرویسی که کمتر از این تعداد روز به انقضاش مونده (یا منقضی شده) «در حال انقضا» حساب می‌شه
 export const EXPIRING_DAYS = 30

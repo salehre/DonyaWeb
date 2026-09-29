@@ -25,7 +25,7 @@ function loadServices() {
 
       services.value = servicesFromInvoices(invoices).map((s) => ({
         ...s,
-        renewDate: s.expireRaw ? formatJalali(s.expireRaw) : '—',
+        purchaseDate: s.purchasedAt ? formatJalali(s.purchasedAt) : '—',
         price: numberWithSeparator(s.price)
       }))
     })
@@ -82,13 +82,13 @@ const filteredServices = computed(() => {
         </button>
       </div>
 
-      <NuxtLink
+      <!-- <NuxtLink
         to="/start"
         class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-medium text-sm shadow-lg shadow-purple-500/30"
       >
         <Plus class="w-4 h-4" />
         سرویس جدید
-      </NuxtLink>
+      </NuxtLink> -->
     </div>
 
     <div v-if="loading" class="space-y-4">

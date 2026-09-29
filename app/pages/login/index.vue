@@ -16,6 +16,7 @@ const showPassword = ref(false)
 const rememberMe = ref(false)
 const isLoading = ref(false)
 const toast = useToast()
+const { clearUser } = useUserInfo()
 
 
 const config = useRuntimeConfig()
@@ -41,6 +42,8 @@ async function handleLogin() {
     })
 
     if(response.code === 2000) {
+      clearUser()
+
       // TODO: بسته به ساختار واقعی پاسخ API این بخش را تنظیم کنید.
       const token = response?.token
       if (token) {

@@ -8,7 +8,7 @@ import {
 const productLinks = [
   { label: 'هاست ابری', to: '/cloudhosting' },
   { label: 'VPS', to: '/vps' },
-  { label: 'سرور اختصاصی', to: '/dedicatedserver' },
+  // { label: 'سرور اختصاصی', to: '/dedicatedserver' },
   { label: 'ثبت دامنه', to: '/domain' }
 ]
 const supportLinks = [
