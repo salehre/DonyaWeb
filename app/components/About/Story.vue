@@ -50,7 +50,7 @@ import { Target, Rocket } from 'lucide-vue-next'
               </div>
               <div class="text-gray-300">Donyaweb - Founded 1389</div>
               <div class="flex gap-2 text-blue-400 mt-4">
-                <span>$ uptime --since founding</span>
+                <span>$ uptime - since founding</span>
               </div>
               <div class="text-gray-300">99.9% average uptime, every year</div>
               <div class="flex gap-2 text-purple-400 mt-4">

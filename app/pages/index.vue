@@ -9,7 +9,7 @@ useHead({
     <HeroSection />
     <ServicesSection />
     <FeaturesSection />
-    <PricingSection />
+    <!-- <PricingSection /> -->
     <TestimonialsSection />
     <BlogSection />
     <FaqSection />

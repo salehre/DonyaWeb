@@ -221,9 +221,10 @@ function toggleFaq(index) {
       </p>
 
       <div class="max-w-3xl mx-auto mb-6">
-        <form class="glass-strong rounded-2xl p-2 flex flex-col md:flex-row gap-2 shadow-2xl" @submit.prevent="searchDomain">
+        <form class="glass-strong rounded-2xl opacity-50 p-2 flex flex-col md:flex-row gap-2 shadow-2xl" @submit.prevent="searchDomain">
           <label for="domain-search" class="sr-only">جستجوی دامنه</label>
           <input
+            disabled
             id="domain-search"
             v-model="query"
             type="text"
@@ -235,7 +236,7 @@ function toggleFaq(index) {
           <button
             type="submit"
             :disabled="isSearching"
-            class="px-8 py-4 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold text-lg shadow-lg flex items-center justify-center gap-2 disabled:opacity-60"
+            class="px-8 py-4 rounded-xl cursor-default! bg-linear-to-r from-purple-600 to-blue-600 transition-all font-bold text-lg shadow-lg flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <Loader2 v-if="isSearching" class="w-5 h-5 animate-spin" />
             <Search v-else class="w-5 h-5" />

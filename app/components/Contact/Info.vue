@@ -2,7 +2,15 @@
 import { Phone, Mail, MapPin } from 'lucide-vue-next'
 
 const officeAddress = 'خیابان ولیعصر، بالاتر از پارک وی، خیابان فیاضی، پلاک 148، طبقه دوم'
-const navigationUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(officeAddress)}`
+
+// مختصات واقعی دفتر رو اینجا بذار
+const officeLocation = {
+  lat: 35.792828,
+  lng: 51.416988
+}
+
+// حالت مسیریابی (Directions) به مقصد مختصات
+const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${officeLocation.lat},${officeLocation.lng}`
 
 const channels = [
   {

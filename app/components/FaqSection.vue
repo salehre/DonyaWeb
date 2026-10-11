@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 
 const faqs = ref([
@@ -49,11 +50,12 @@ function toggle(index) {
       <div
         v-for="(item, index) in faqs"
         :key="item.question"
-        class="glass-card rounded-2xl overflow-hidden transition-all duration-300"
+        class="glass-card rounded-2xl overflow-hidden"
       >
         <button
           type="button"
           class="w-full flex items-center justify-between px-7 py-6 text-right hover:bg-white/5 transition"
+          :aria-expanded="opened === index"
           @click="toggle(index)"
         >
           <h3 class="font-bold text-lg">{{ item.question }}</h3>
@@ -63,18 +65,17 @@ function toggle(index) {
           />
         </button>
 
-        <Transition
-          enter-active-class="transition-all duration-300"
-          leave-active-class="transition-all duration-300"
-          enter-from-class="max-h-0 opacity-0"
-          enter-to-class="max-h-96 opacity-100"
-          leave-from-class="max-h-96 opacity-100"
-          leave-to-class="max-h-0 opacity-0"
+        <!-- بدون v-if: المان همیشه در DOM است تا ترنزیشن کار کند -->
+        <div
+          class="grid transition-[grid-template-rows,opacity] duration-300 ease-in-out"
+          :class="opened === index ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'"
         >
-          <div v-if="opened === index" class="px-7 pb-7 text-gray-400 leading-8 border-t border-white/10">
-            {{ item.answer }}
+          <div class="overflow-hidden">
+            <div class="px-7 pb-7 pt-5 text-gray-400 leading-8 border-t border-white/10">
+              {{ item.answer }}
+            </div>
           </div>
-        </Transition>
+        </div>
       </div>
     </div>
   </section>

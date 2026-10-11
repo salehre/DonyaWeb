@@ -41,8 +41,9 @@ function searchDomain() {
 
       <!-- Domain Search -->
       <div class="max-w-3xl mx-auto mb-12 relative">
-        <div class="glass-strong rounded-2xl p-2 flex flex-col md:flex-row gap-2 shadow-2xl">
+        <div class="glass-strong opacity-50 rounded-2xl p-2 flex flex-col md:flex-row gap-2 shadow-2xl">
           <input
+            disabled
             v-model="domainQuery"
             type="text"
             dir="rtl"
@@ -52,7 +53,7 @@ function searchDomain() {
           >
           <button
             type="button"
-            class="px-8 py-4 rounded-xl bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all font-bold text-lg shadow-lg flex items-center justify-center gap-2"
+            class="px-8 py-4 rounded-xl cursor-default! bg-linear-to-r from-purple-600 to-blue-600 transition-all font-bold text-lg shadow-lg flex items-center justify-center gap-2"
             @click="searchDomain"
           >
             <Search class="w-5 h-5" />
